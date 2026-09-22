@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+ 
+# backups 
+*.backup 
+*.safe 
+*.3B-complete 
+.next_old/ 
+.agents/ 
