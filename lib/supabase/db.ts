@@ -121,3 +121,27 @@ export async function syncAllToSupabase(data: {
   }
   return { success: true };
 }
+
+
+// ============ Delete ============
+
+export async function deleteInventoryItem(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('inventory').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteReceipt(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('receipts').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteExpense(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
