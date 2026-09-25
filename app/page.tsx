@@ -1,5 +1,9 @@
 "use client";
 import { fetchReceipts, fetchInventory, fetchExpenses, upsertReceipts, upsertInventory, upsertExpenses, deleteInventoryItem, deleteReceipt, deleteExpense } from '@/lib/supabase/db';import React, { useState, useEffect, useRef } from 'react';
+import SplashScreen from '@/components/SplashScreen';
+import BottomNav from '@/components/BottomNav';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { getTheme, classes } from '@/lib/theme';
 import { syncAllToSupabase } from '@/lib/supabase/db';
 /* =========================================================================
    الأنواع (Types)
@@ -137,6 +141,7 @@ export default function BoodyGroupSystem() {
   /* ------------------------- States ------------------------- */
 
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [showSplash, setShowSplash] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -690,11 +695,17 @@ export default function BoodyGroupSystem() {
     }
   };
 
-  const handleLockAdmin = () => {
+ const handleLockAdmin = () => {
+  if (isAdminUnlocked) {
     setIsAdminUnlocked(false);
     setUserRole('technician');
     showToast('تم قفل وضع المدير 🔒', 'info');
-  };
+  } else {
+    setPinInput('');
+    setPinError('');
+    setPinModalOpen(true);
+  }
+};
 
   /* ------------------------- Staff ------------------------- */
 
@@ -1258,19 +1269,32 @@ export default function BoodyGroupSystem() {
 
   /* ------------------------- Theme ------------------------- */
 
-  const theme = {
-    bg: darkMode ? 'bg-[#0e1117] text-[#e3e8ee]' : 'bg-[#f4f6f9] text-[#111827]',
-    card: darkMode ? 'bg-[#161b22] border-[#30363d]' : 'bg-white border-[#d0d7de] shadow-sm',
+    const theme = {
+    bg: darkMode
+      ? 'bg-[#0f0a1a] text-[#f5f3ff]'
+      : 'bg-[#faf9fc] text-[#1a1625]',
+    card: darkMode
+      ? 'bg-[#1a0f2e] border-[#2d1f4a]'
+      : 'bg-white border-[#e9e5f5] shadow-sm',
     input: darkMode
-      ? 'bg-[#0d1117] border-[#30363d] text-white placeholder-[#8b949e] focus:border-indigo-500'
-      : 'bg-white border-[#d0d7de] text-[#111827] placeholder-[#6e7781] focus:border-indigo-600',
-    textMuted: darkMode ? 'text-[#8b949e]' : 'text-[#57606a]',
+      ? 'bg-[#150e22] border-[#2d1f4a] text-white placeholder-[#8479a0] focus:border-[#a78bfa]'
+      : 'bg-white border-[#e9e5f5] text-[#1a1625] placeholder-[#9c96b3] focus:border-[#8b5cf6]',
+    textMuted: darkMode ? 'text-[#b8b0d0]' : 'text-[#6b6680]',
     badgeInactive: darkMode
-      ? 'bg-[#21262d] text-[#c9d1d9] border-[#30363d]'
-      : 'bg-[#f0f3f6] text-[#24292f] border-[#d0d7de]',
+      ? 'bg-[#231740] text-[#f5f3ff] border-[#2d1f4a]'
+      : 'bg-[#f5f3ff] text-[#1a1625] border-[#e9e5f5]',
     subHeader: darkMode
-      ? 'bg-[#0e1117]/90 border-[#30363d]'
-      : 'bg-white/90 border-[#d0d7de]',
+      ? 'bg-[#0f0a1a]/90 border-[#2d1f4a]'
+      : 'bg-white/90 border-[#e9e5f5]',
+    primary: darkMode ? '#a78bfa' : '#8b5cf6',
+    accent: darkMode ? '#f472b6' : '#ec4899',
+    primaryBg: darkMode ? 'bg-[#a78bfa]' : 'bg-[#8b5cf6]',
+    primaryHover: darkMode ? 'hover:bg-[#c4b5fd]' : 'hover:bg-[#7c3aed]',
+    accentBg: darkMode ? 'bg-[#f472b6]' : 'bg-[#ec4899]',
+    successBg: darkMode ? 'bg-[#34d399]' : 'bg-[#10b981]',
+    warningBg: darkMode ? 'bg-[#fbbf24]' : 'bg-[#f59e0b]',
+    dangerBg: darkMode ? 'bg-[#f87171]' : 'bg-[#ef4444]',
+    gradient: 'bg-gradient-to-br from-[#8b5cf6] to-[#ec4899]',
   };
 
   const fontSizeClass =
@@ -1301,11 +1325,14 @@ export default function BoodyGroupSystem() {
      الواجهة (JSX) — الجزء 1
      ========================================================================= */
 
-  return (
-    <div
-      className={`min-h-screen ${theme.bg} ${fontSizeClass} ${fontWeightClass} transition-colors duration-200 flex`}
-      dir="rtl"
-    >
+    return (
+    <>
+      {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+      
+      <div
+        className={`min-h-screen ${theme.bg} ${fontSizeClass} ${fontWeightClass} transition-colors duration-200 flex`}
+        dir="rtl"
+      >
 
       {/* 🔔 الإشعارات العائمة (Toasts) */}
       <div className="fixed top-5 left-5 z-[999] space-y-2 pointer-events-none">
@@ -1327,139 +1354,160 @@ export default function BoodyGroupSystem() {
       </div>
 
       {/* 🧭 الشريط الجانبي */}
-      <aside
-        className={`${isSidebarOpen ? 'w-64' : 'w-20'} ${
-          darkMode ? 'bg-[#12161c] border-r border-[#30363d]' : 'bg-white border-r border-[#d0d7de]'
-        } flex flex-col transition-all duration-300 z-40 shrink-0`}
-      >
-        <div className="p-4 border-b border-[#30363d]/40 flex items-center justify-between gap-2">
-          {isSidebarOpen && (
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black p-2.5 rounded-2xl text-sm shadow-md flex items-center justify-center">
-                BG
-              </div>
-              <div className="overflow-hidden">
-                <h2 className="font-extrabold text-sm truncate">{shopName}</h2>
-                <p className={`text-2xs ${theme.textMuted}`}>سحابة محلية آمنة 💻</p>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition mx-auto"
-            title="تبديل إظهار القائمة"
-          >
-            {isSidebarOpen ? '◀' : '▶'}
-          </button>
+     <aside
+  className={`${isSidebarOpen ? 'w-64' : 'w-20'} ${
+    darkMode
+      ? 'bg-[#150e22] border-l-0 border-r border-[#2d1f4a]'
+      : 'bg-white border-r border-[#e9e5f5]'
+  } flex flex-col transition-all duration-300 z-40 shrink-0`}
+>
+  {/* Header + Logo */}
+  <div className={`p-4 border-b ${darkMode ? 'border-[#2d1f4a]' : 'border-[#e9e5f5]'} flex items-center justify-between gap-2`}>
+    {isSidebarOpen && (
+      <div className="flex items-center gap-3 overflow-hidden animate-fadeIn">
+        <div className="bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-black p-2.5 rounded-2xl text-sm shadow-lg shadow-[#8b5cf6]/30 flex items-center justify-center shrink-0">
+          MS
         </div>
-
-        <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          {menuItems.map(item => {
-            const isActive = activeTab === item.id;
-            const restricted = isRestrictedForTech(item.id);
-
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (restricted) {
-                    showToast('عذراً، هذا القسم مخصص للمدير العام فقط!', 'error');
-                    return;
-                  }
-                  if (item.id === 'receiving' && !editingReceiptId) resetForm();
-                  setActiveTab(item.id);
-                }}
-                className={`w-full text-right px-4 py-3 rounded-2xl transition flex items-center justify-between text-xs font-bold ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                    : `${theme.textMuted} hover:bg-indigo-500/10 hover:text-indigo-400`
-                } ${restricted ? 'opacity-50' : ''}`}
-                title={!isSidebarOpen ? item.label : undefined}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-base">{item.icon}</span>
-                  {isSidebarOpen && <span>{item.label}</span>}
-                  {isSidebarOpen && item.id === 'inventory' && outOfStockParts.length > 0 && (
-                    <span className="bg-rose-500 text-white text-2xs font-black rounded-full px-1.5 py-0.5">
-                      {outOfStockParts.length}
-                    </span>
-                  )}
-                </div>
-                {isSidebarOpen && restricted && <span className="text-2xs">🔒</span>}
-              </button>
-            );
-          })}
+        <div className="overflow-hidden">
+          <h2 className={`font-extrabold text-sm truncate ${darkMode ? 'text-[#f5f3ff]' : 'text-[#1a1625]'}`}>
+            {shopName}
+          </h2>
+          <p className={`text-2xs ${theme.textMuted} truncate`}>
+            نظام إدارة الصيانة
+          </p>
         </div>
-      </aside>
+      </div>
+    )}
+    <button
+      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      className={`p-2 rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 ${
+        darkMode
+          ? 'bg-[#8b5cf6]/10 text-[#a78bfa] hover:bg-[#8b5cf6]/20'
+          : 'bg-[#8b5cf6]/10 text-[#8b5cf6] hover:bg-[#8b5cf6]/20'
+      } ${!isSidebarOpen ? 'mx-auto' : ''}`}
+      title="تبديل إظهار القائمة"
+    >
+      {isSidebarOpen ? '◀' : '▶'}
+    </button>
+  </div>
+
+  {/* Menu Items */}
+  <div className="flex-1 overflow-y-auto p-3 space-y-1">
+    {menuItems.map((item, idx) => {
+      const isActive = activeTab === item.id;
+      const restricted = isRestrictedForTech(item.id);
+      const hasBadge = item.id === 'inventory' && outOfStockParts.length > 0;
+
+      return (
+        <button
+          key={item.id}
+          onClick={() => {
+            if (restricted) {
+              showToast('عذراً، هذا القسم مخصص للمدير العام فقط!', 'error');
+              return;
+            }
+            if (item.id === 'receiving' && !editingReceiptId) resetForm();
+            setActiveTab(item.id);
+          }}
+          className={`w-full text-right px-3 py-3 rounded-xl transition-all duration-200 flex items-center justify-between text-xs font-bold group ${
+            isActive
+              ? 'bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white shadow-lg shadow-[#8b5cf6]/30 scale-[1.02]'
+              : darkMode
+              ? 'text-[#b8b0d0] hover:bg-[#231740] hover:text-[#f5f3ff] hover:translate-x-[-2px]'
+              : 'text-[#6b6680] hover:bg-[#f5f3ff] hover:text-[#1a1625] hover:translate-x-[-2px]'
+          } ${restricted ? 'opacity-50' : ''}`}
+          title={!isSidebarOpen ? item.label : undefined}
+          style={{ animationDelay: `${idx * 20}ms` }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`text-lg transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+              {item.icon}
+            </span>
+            {isSidebarOpen && <span className="truncate">{item.label}</span>}
+            {isSidebarOpen && hasBadge && (
+              <span className="bg-gradient-to-br from-[#ec4899] to-[#f472b6] text-white text-2xs font-black rounded-full px-1.5 py-0.5 shadow-md shrink-0">
+                {outOfStockParts.length}
+              </span>
+            )}
+          </div>
+          {isSidebarOpen && restricted && <span className="text-2xs shrink-0">🔒</span>}
+        </button>
+      );
+    })}
+  </div>
+
+  {/* Footer (اختياري) */}
+  {isSidebarOpen && (
+    <div className={`p-3 border-t ${darkMode ? 'border-[#2d1f4a]' : 'border-[#e9e5f5]'} text-center`}>
+      <p className={`text-2xs ${theme.textMuted}`}>
+        MS Fix © 2026
+      </p>
+    </div>
+  )}
+</aside>
 
       {/* 📄 المحتوى الرئيسي */}
       <div className="flex-1 flex flex-col min-w-0">
 
         {/* ================= الهيدر ================= */}
-        <header
-          className={`border-b ${theme.subHeader} sticky top-0 z-30 px-6 py-3 flex justify-between items-center flex-wrap gap-3 backdrop-blur-xl`}
-        >
-          <div className="flex items-center gap-3">
-            <h1 className="font-extrabold text-sm md:text-base tracking-wide flex items-center gap-2">
-              {shopName}
-              <span className="text-2xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                سحابة محلية نشطة 💾
-              </span>
-            </h1>
-          </div>
+       <header
+  className={`border-b ${theme.subHeader} sticky top-0 z-30 px-4 md:px-6 py-3 flex justify-between items-center gap-3 backdrop-blur-xl`}
+>
+  {/* اليسار: الشعار + الاسم */}
+  <div className="flex items-center gap-3 min-w-0">
+    <div className="bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-black rounded-xl shadow-lg shadow-[#8b5cf6]/30 flex items-center justify-center w-10 h-10 text-sm shrink-0">
+      MS
+    </div>
+    <div className="min-w-0">
+      <h1 className="font-extrabold text-sm md:text-base tracking-wide truncate gradient-text">
+        {shopName}
+      </h1>
+      <p className={`text-2xs ${theme.textMuted} truncate hidden md:block`}>
+        نظام إدارة مركز الصيانة
+      </p>
+    </div>
+  </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+  {/* اليمين: الأزرار */}
+  <div className="flex items-center gap-1.5 md:gap-2">
 
-            {/* 🔔 زر الإشعارات */}
-            <button
-              onClick={() => setNotifPanelOpen(v => !v)}
-              className={`relative border px-3 py-1.5 rounded-xl text-2xs transition ${theme.badgeInactive}`}
-              title="الإشعارات"
-            >
-              🔔
-              {unreadNotifs > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-2xs font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                  {unreadNotifs}
-                </span>
-              )}
-            </button>
+    {/* 🔔 الإشعارات */}
+    <button
+      onClick={() => setNotifPanelOpen(v => !v)}
+      className={`relative w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-200 hover:scale-105 active:scale-95 ${theme.badgeInactive}`}
+      title="الإشعارات"
+    >
+      🔔
+      {unreadNotifs > 0 && (
+        <span className="absolute -top-1 -right-1 bg-gradient-to-br from-[#ec4899] to-[#f472b6] text-white text-2xs font-black rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 shadow-lg">
+          {unreadNotifs}
+        </span>
+      )}
+    </button>
 
-            {/* 🌙 الوضع */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`border px-3 py-1.5 rounded-xl text-2xs transition ${theme.badgeInactive}`}
-            >
-              {darkMode ? '☀️ وضع ساطع' : '🌙 وضع داكن'}
-            </button>
+    {/* ☀️/🌙 الوضع */}
+    <button
+      onClick={() => setDarkMode(!darkMode)}
+      className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-200 hover:scale-105 active:scale-95 ${theme.badgeInactive}`}
+      title={darkMode ? 'الوضع الساطع' : 'الوضع الداكن'}
+    >
+      {darkMode ? '☀️' : '🌙'}
+    </button>
 
-            {/* 👤 تبديل الدور */}
-            <div className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-zinc-700">
-              <select
-                value={userRole}
-                onChange={e => handleRoleChange(e.target.value as UserRole)}
-                className="bg-transparent text-indigo-300 font-bold text-xs p-1 outline-none cursor-pointer"
-              >
-                <option value="admin" className="bg-[#161b22] text-white">
-                  👨‍💼 المدير العام ({adminName})
-                </option>
-                <option value="technician" className="bg-[#161b22] text-white">
-                  👨‍🔧 فني صيانة
-                </option>
-              </select>
-            </div>
-
-            {/* 🔒 قفل المدير */}
-            {isAdminUnlocked && userRole === 'admin' && (
-              <button
-                onClick={handleLockAdmin}
-                className="border px-3 py-1.5 rounded-xl text-2xs transition bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20"
-                title="قفل وضع المدير"
-              >
-                🔒 قفل
-              </button>
-            )}
-          </div>
-        </header>
+    {/* 🔒 قفل المدير */}
+    <button
+  onClick={handleLockAdmin}
+  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+    isAdminUnlocked
+      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
+      : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20'
+  }`}
+  title={isAdminUnlocked ? 'قفل وضع المدير' : 'فتح وضع المدير (PIN)'}
+>
+  {isAdminUnlocked ? '🔓' : '🔒'}
+</button>
+  </div>
+</header>
 
         {/* لوحة الإشعارات المنسدلة */}
         {notifPanelOpen && (
@@ -2802,9 +2850,13 @@ export default function BoodyGroupSystem() {
               </button>
             </div>
           </div>
-        </div>
+               </div>
       )}
 
-    </div>
+      {/* Bottom Nav للموبايل */}
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      </div>
+    </>
   );
 }
