@@ -833,6 +833,28 @@ export default function BoodyGroupSystem() {
       showToast('يرجى اختيار قطعة واحدة على الأقل من القائمة!', 'error');
       return;
     }
+      const handleDeleteInventoryItem = (id: string) => {
+    openConfirm('حذف قطعة', 'هل تريد حذف هذه القطعة من المخزن؟', async () => {
+      const newInventory = inventory.filter(i => i.id !== id);
+      setInventory(newInventory);
+      localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(newInventory));
+      
+      try {
+        const result = await deleteInventoryItem(id);
+        if (!result.success) {
+          console.error('خطأ في حذف القطعة:', result.error);
+          showToast('تحذير: القطعة اتحذفت من الواجهة بس مش من Supabase', 'error');
+        } else {
+          showToast('تم حذف القطعة من المخزن', 'info');
+        }
+      } catch (err) {
+        console.error('خطأ:', err);
+        showToast('تحذير: فيه مشكلة في الاتصال بـ Supabase', 'error');
+      }
+      
+      closeConfirm();
+    });
+  };
 
     let updatedInv = [...inventory];
     const modelTarget = bulkModelTarget.trim() || 'عام';
