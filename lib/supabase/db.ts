@@ -57,6 +57,11 @@ export async function upsertInventory(items: any[]) {
     part_name: i.partName,
     quantity: Number(i.quantity) || 0,
     cost_price: Number(i.costPrice) || 0,
+    supplier_name: i.supplierName || null,
+    min_quantity: Number(i.minQuantity) || 1,
+    category: i.category || 'original',
+    condition: i.condition || 'new',
+    notes: i.notes || null,
   }));
 
   const { error } = await supabase.from('inventory').upsert(rows, { onConflict: 'id' });

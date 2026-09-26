@@ -51,6 +51,11 @@ interface InventoryItem {
   partName: string;
   quantity: number;
   costPrice: number;
+  supplierName?: string;
+  minQuantity?: number;
+  category?: string;
+  condition?: string;
+  notes?: string;
 }
 
 interface ExpenseItem {
@@ -222,6 +227,12 @@ export default function BoodyGroupSystem() {
   const [bulkCost, setBulkCost] = useState<number>(0);
   const [bulkBrandTarget, setBulkBrandTarget] = useState('OPPO');
 
+    // حقول المخزن الإضافية
+  const [bulkSupplier, setBulkSupplier] = useState('');
+  const [bulkMinQty, setBulkMinQty] = useState<number>(1);
+  const [bulkCategory, setBulkCategory] = useState('original');
+  const [bulkCondition, setBulkCondition] = useState('new');
+  const [bulkNotes, setBulkNotes] = useState('');
   // Toast + Notifications + Confirm
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -375,13 +386,18 @@ export default function BoodyGroupSystem() {
 
         if (iRes.success && iRes.data.length > 0) {
           const mapped: InventoryItem[] = iRes.data.map((i: any) => ({
-            id: i.id,
-            brand: i.brand,
-            deviceModel: i.device_model || '',
-            partName: i.part_name,
-            quantity: Number(i.quantity) || 0,
-            costPrice: Number(i.cost_price) || 0,
-          }));
+  id: i.id,
+  brand: i.brand,
+  deviceModel: i.device_model || '',
+  partName: i.part_name,
+  quantity: Number(i.quantity) || 0,
+  costPrice: Number(i.cost_price) || 0,
+  supplierName: i.supplier_name || '',
+  minQuantity: Number(i.min_quantity) || 1,
+  category: i.category || 'original',
+  condition: i.condition || 'new',
+  notes: i.notes || '',
+}));
           setInventory(mapped);
           localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(mapped));
         }
@@ -811,7 +827,7 @@ export default function BoodyGroupSystem() {
 
   /* ------------------------- Inventory Add ------------------------- */
 
-  const handleBulkAddInventory = (e: React.FormEvent) => {
+    const handleBulkAddInventory = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedPartsForInventory.length === 0) {
       showToast('يرجى اختيار قطعة واحدة على الأقل من القائمة!', 'error');
@@ -830,6 +846,11 @@ export default function BoodyGroupSystem() {
       if (existingIdx !== -1) {
         updatedInv[existingIdx].quantity += Number(bulkQty);
         if (bulkCost > 0) updatedInv[existingIdx].costPrice = Number(bulkCost);
+        if (bulkSupplier) updatedInv[existingIdx].supplierName = bulkSupplier;
+        if (bulkMinQty > 0) updatedInv[existingIdx].minQuantity = Number(bulkMinQty);
+        if (bulkCategory) updatedInv[existingIdx].category = bulkCategory;
+        if (bulkCondition) updatedInv[existingIdx].condition = bulkCondition;
+        if (bulkNotes) updatedInv[existingIdx].notes = bulkNotes;
       } else {
         updatedInv.push({
           id: generateId(),
@@ -838,6 +859,11 @@ export default function BoodyGroupSystem() {
           partName: part,
           quantity: Number(bulkQty),
           costPrice: Number(bulkCost),
+          supplierName: bulkSupplier || undefined,
+          minQuantity: Number(bulkMinQty) || 1,
+          category: bulkCategory || 'original',
+          condition: bulkCondition || 'new',
+          notes: bulkNotes || undefined,
         });
       }
     });
@@ -847,37 +873,12 @@ export default function BoodyGroupSystem() {
     setBulkModelTarget('');
     setBulkQty(1);
     setBulkCost(0);
+    setBulkSupplier('');
+    setBulkMinQty(1);
+    setBulkCategory('original');
+    setBulkCondition('new');
+    setBulkNotes('');
     showToast('تم تحديث وإضافة القطع للمخزن المحلي بنجاح!');
-  };
-
-     const handleDeleteInventoryItem = (id: string) => {
-    console.log('🗑️ handleDeleteInventoryItem called with id:', id);
-    
-    openConfirm('حذف قطعة', 'هل تريد حذف هذه القطعة من المخزن؟', async () => {
-      console.log('✅ Confirm callback executed');
-      
-      const newInventory = inventory.filter(i => i.id !== id);
-      setInventory(newInventory);
-      localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(newInventory));
-      
-      try {
-        console.log('🚀 Calling deleteInventoryItem with:', id);
-        const result = await deleteInventoryItem(id);
-        console.log('📥 deleteInventoryItem result:', result);
-        
-        if (!result.success) {
-          console.error('خطأ في حذف القطعة:', result.error);
-          showToast('تحذير: القطعة اتحذفت من الواجهة بس مش من Supabase', 'error');
-        } else {
-          showToast('تم حذف القطعة من المخزن', 'info');
-        }
-      } catch (err) {
-        console.error('خطأ:', err);
-        showToast('تحذير: فيه مشكلة في الاتصال بـ Supabase', 'error');
-      }
-      
-      closeConfirm();
-    });
   };
 
   /* ------------------------- Expenses ------------------------- */
@@ -2082,20 +2083,91 @@ export default function BoodyGroupSystem() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                  <div>
-                    <label className={`block mb-1 ${theme.textMuted}`}>2. موديل الجهاز</label>
-                    <input type="text" value={bulkModelTarget} onChange={e => setBulkModelTarget(e.target.value)} placeholder="مثال: A15 أو عام" className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
-                  </div>
-                  <div>
-                    <label className={`block mb-1 ${theme.textMuted}`}>3. الكمية المضافة *</label>
-                    <input type="number" value={bulkQty} onChange={e => setBulkQty(Number(e.target.value))} className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
-                  </div>
-                  <div>
-                    <label className={`block mb-1 ${theme.textMuted}`}>4. تكلفة القطعة (ج.م) *</label>
-                    <input type="number" value={bulkCost} onChange={e => setBulkCost(Number(e.target.value))} className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
-                  </div>
-                </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>2. موديل الجهاز</label>
+    <input type="text" value={bulkModelTarget} onChange={e => setBulkModelTarget(e.target.value)} placeholder="مثال: A15 أو عام" className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
+  </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>3. الكمية المضافة *</label>
+    <input type="number" value={bulkQty} onChange={e => setBulkQty(Number(e.target.value))} className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
+  </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>4. تكلفة القطعة (ج.م) *</label>
+    <input type="number" value={bulkCost} onChange={e => setBulkCost(Number(e.target.value))} className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
+  </div>
+</div>
 
+{/* 🆕 حقول إضافية */}
+<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>🏢 المورد (اختياري)</label>
+    <input
+      type="text"
+      value={bulkSupplier}
+      onChange={e => setBulkSupplier(e.target.value)}
+      placeholder="مثال: أحمد للموبايلات"
+      className={`w-full ${theme.input} p-3.5 rounded-xl`}
+      list="bulk-suppliers-list"
+    />
+    <datalist id="bulk-suppliers-list">
+      {Array.from(new Set(inventory.map(i => i.supplierName).filter(Boolean))).map((s, idx) => (
+        <option key={idx} value={s as string} />
+      ))}
+    </datalist>
+  </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>⚠️ الحد الأدنى للتنبيه</label>
+    <input
+      type="number"
+      value={bulkMinQty}
+      onChange={e => setBulkMinQty(Number(e.target.value))}
+      min={1}
+      className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`}
+    />
+    <span className={`text-2xs ${theme.textMuted} block mt-1`}>
+      ينبهك لما الكمية توصل للرقم ده (افتراضي: 1)
+    </span>
+  </div>
+</div>
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>🏷️ التصنيف</label>
+    <select
+      value={bulkCategory}
+      onChange={e => setBulkCategory(e.target.value)}
+      className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`}
+    >
+      <option value="original">🟢 أصلي</option>
+      <option value="copy">🟡 تجاري</option>
+      <option value="pulled">🔵 مسحوب</option>
+      <option value="other">⚪ أخرى</option>
+    </select>
+  </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>✨ الحالة</label>
+    <select
+      value={bulkCondition}
+      onChange={e => setBulkCondition(e.target.value)}
+      className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`}
+    >
+      <option value="new">✨ جديدة</option>
+      <option value="used">🔧 مستعملة</option>
+      <option value="for_repair">⚙️ للصيانة</option>
+    </select>
+  </div>
+  <div>
+    <label className={`block mb-1 ${theme.textMuted}`}>📝 ملاحظات</label>
+    <input
+      type="text"
+      value={bulkNotes}
+      onChange={e => setBulkNotes(e.target.value)}
+      placeholder="ملاحظات إضافية..."
+      className={`w-full ${theme.input} p-3.5 rounded-xl`}
+    />
+  </div>
+</div>
+                {/* 5. اختر قطع الغيار */}
                 <div>
                   <label className="block mb-2 font-bold">5. اختر قطع الغيار:</label>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
