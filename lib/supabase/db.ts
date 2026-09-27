@@ -150,3 +150,64 @@ export async function deleteExpense(id: string) {
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+
+// ============ Inventory Movements (سجل الحركة) ============
+
+export async function logInventoryMovement(data: {
+  inventoryId: string;
+  partName?: string;
+  brand?: string;
+  deviceModel?: string;
+  type: 'in' | 'out' | 'adjust' | 'return';
+  quantity: number;
+  reason?: string;
+  receiptId?: string;
+  supplierInvoiceId?: string;
+  notes?: string;
+}) {
+  const supabase = createClient();
+  
+  const row = {
+    id: crypto.randomUUID(),
+    inventory_id: data.inventoryId,
+    part_name: data.partName || null,
+    brand: data.brand || null,
+    device_model: data.deviceModel || null,
+    type: data.type,
+    quantity: data.quantity,
+    reason: data.reason || null,
+    receipt_id: data.receiptId || null,
+    supplier_invoice_id: data.supplierInvoiceId || null,
+    notes: data.notes || null,
+  };
+  
+  const { error } = await supabase.from('inventory_movements').insert(row);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function fetchInventoryMovements(inventoryId?: string) {
+  const supabase = createClient();
+  
+  let query = supabase
+    .from('inventory_movements')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  
+  if (inventoryId) {
+    query = query.eq('inventory_id', inventoryId);
+  }
+  
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function deleteInventoryMovement(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('inventory_movements').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}

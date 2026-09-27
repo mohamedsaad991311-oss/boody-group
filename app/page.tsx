@@ -1,5 +1,6 @@
 "use client";
-import { fetchReceipts, fetchInventory, fetchExpenses, upsertReceipts, upsertInventory, upsertExpenses, deleteInventoryItem, deleteReceipt, deleteExpense } from '@/lib/supabase/db';import React, { useState, useEffect, useRef } from 'react';
+import { fetchReceipts, fetchInventory, fetchExpenses, upsertReceipts, upsertInventory, upsertExpenses, deleteInventoryItem, deleteReceipt, deleteExpense, logInventoryMovement, fetchInventoryMovements } from '@/lib/supabase/db';
+import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import BottomNav from '@/components/BottomNav';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -784,9 +785,20 @@ export default function BoodyGroupSystem() {
         inv.brand.toLowerCase() === deviceBrand.toLowerCase() &&
         inv.partName.toLowerCase().trim() === issue.toLowerCase().trim()
       );
-      if (idx !== -1 && updatedInv[idx].quantity > 0) {
+            if (idx !== -1 && updatedInv[idx].quantity > 0) {
         updatedInv[idx].quantity -= 1;
         alerts.push(`تم خصم (${updatedInv[idx].partName} - ${updatedInv[idx].brand}) من المخزن`);
+        
+        // 📝 تسجيل حركة الاستخدام
+        logInventoryMovement({
+          inventoryId: updatedInv[idx].id,
+          partName: updatedInv[idx].partName,
+          brand: updatedInv[idx].brand,
+          deviceModel: updatedInv[idx].deviceModel,
+          type: 'out',
+          quantity: 1,
+          reason: 'استخدام في صيانة',
+        });
       }
     });
 
@@ -869,16 +881,39 @@ export default function BoodyGroupSystem() {
     });
 
     saveInventory(updatedInv);
-    setSelectedPartsForInventory([]);
-    setBulkModelTarget('');
-    setBulkQty(1);
-    setBulkCost(0);
-    setBulkSupplier('');
-    setBulkMinQty(1);
-    setBulkCategory('original');
-    setBulkCondition('new');
-    setBulkNotes('');
-    showToast('تم تحديث وإضافة القطع للمخزن المحلي بنجاح!');
+
+// 📝 تسجيل الحركة لكل قطعة في السجل
+selectedPartsForInventory.forEach(part => {
+  const existing = updatedInv.find(i => 
+    i.brand === bulkBrandTarget && 
+    i.deviceModel.toLowerCase() === modelTarget.toLowerCase() && 
+    i.partName === part
+  );
+  
+  if (existing) {
+    logInventoryMovement({
+      inventoryId: existing.id,
+      partName: part,
+      brand: bulkBrandTarget,
+      deviceModel: modelTarget,
+      type: 'in',
+      quantity: Number(bulkQty),
+      reason: 'إضافة للمخزن',
+      notes: bulkSupplier ? `من المورد: ${bulkSupplier}` : undefined,
+    });
+  }
+});
+
+setSelectedPartsForInventory([]);
+setBulkModelTarget('');
+setBulkQty(1);
+setBulkCost(0);
+setBulkSupplier('');
+setBulkMinQty(1);
+setBulkCategory('original');
+setBulkCondition('new');
+setBulkNotes('');
+showToast('تم تحديث وإضافة القطع للمخزن المحلي بنجاح!');
   };
 
     const handleDeleteInventoryItem = (id: string) => {
@@ -892,8 +927,22 @@ export default function BoodyGroupSystem() {
         if (!result.success) {
           console.error('خطأ في حذف القطعة:', result.error);
           showToast('تحذير: القطعة اتحذفت من الواجهة بس مش من Supabase', 'error');
-        } else {
+                } else {
           showToast('تم حذف القطعة من المخزن', 'info');
+          
+          // 📝 تسجيل حركة الحذف
+          const item = inventory.find(i => i.id === id);
+          if (item) {
+            logInventoryMovement({
+              inventoryId: item.id,
+              partName: item.partName,
+              brand: item.brand,
+              deviceModel: item.deviceModel,
+              type: 'out',
+              quantity: item.quantity,
+              reason: 'حذف من المخزن',
+            });
+          }
         }
       } catch (err) {
         console.error('خطأ:', err);
