@@ -281,7 +281,8 @@ const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
 // 💵 دفعات الموردين
 const [supplierPayments, setSupplierPayments] = useState<any[]>([]);
 const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
-const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
+  const [newPaymentDate, setNewPaymentDate] = useState(new Date().toLocaleDateString('en-CA'));
+
 const [newPaymentMethod, setNewPaymentMethod] = useState<'cash' | 'bank' | 'wallet'>('cash');
 const [newPaymentNotes, setNewPaymentNotes] = useState('');
 

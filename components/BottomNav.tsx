@@ -1,7 +1,7 @@
 'use client';
 
 type TabId = 'home' | 'receiving' | 'receipts' | 'delivery'
-  | 'inventory' | 'expenses' | 'reports'
+  | 'inventory' | 'suppliers' | 'expenses' | 'reports'
   | 'scanner' | 'cloud' | 'staff' | 'settings';
 
 interface BottomNavProps {
