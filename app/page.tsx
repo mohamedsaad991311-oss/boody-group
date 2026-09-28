@@ -277,6 +277,7 @@ const [newInvoiceDate, setNewInvoiceDate] = useState(new Date().toLocaleDateStri
 const [newInvoiceTotal, setNewInvoiceTotal] = useState<number>(0);
 const [newInvoiceParts, setNewInvoiceParts] = useState('');
 const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
+const [newInvoiceImage, setNewInvoiceImage] = useState<string | null>(null);
 
 // 💵 دفعات الموردين
 const [supplierPayments, setSupplierPayments] = useState<any[]>([]);
@@ -3351,16 +3352,17 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                       }
                       
                       const invoiceData = {
-                        id: generateId(),
-                        supplierId: selectedSupplier.id,
-                        invoiceNumber: newInvoiceNumber.trim(),
-                        invoiceDate: newInvoiceDate || formatDate(new Date()),
-                        totalAmount: Number(newInvoiceTotal),
-                        paidAmount: 0,
-                        parts: newInvoiceParts ? newInvoiceParts.split(',').map(p => p.trim()).filter(Boolean) : [],
-                        notes: newInvoiceNotes.trim(),
-                        status: 'pending' as const,
-                      };
+  id: generateId(),
+  supplierId: selectedSupplier.id,
+  invoiceNumber: newInvoiceNumber.trim(),
+  invoiceDate: newInvoiceDate || new Date().toLocaleDateString('en-CA'),
+  totalAmount: Number(newInvoiceTotal),
+  paidAmount: 0,
+  parts: newInvoiceParts ? newInvoiceParts.split(',').map(p => p.trim()).filter(Boolean) : [],
+  notes: newInvoiceNotes.trim(),
+  status: 'pending' as const,
+  invoiceImage: newInvoiceImage || undefined,
+};
                       
                       const result = await upsertSupplierInvoice(invoiceData);
                       if (!result.success) {
@@ -3374,6 +3376,7 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                       setNewInvoiceTotal(0);
                       setNewInvoiceParts('');
                       setNewInvoiceNotes('');
+                      setNewInvoiceImage(null);
                       showToast('تم إضافة الفاتورة بنجاح ✅');
                     }}
                     className="p-4 rounded-xl border border-[#2d1f4a] bg-[#150e22] space-y-3"
@@ -3415,6 +3418,40 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                       placeholder="ملاحظات"
                       className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
                     />
+                    
+                    {/* 📷 صورة الإيصال */}
+                    <div className={`p-3 rounded-xl border ${darkMode ? 'bg-[#0d1117] border-[#2d1f4a]' : 'bg-slate-50 border-[#e9e5f5]'}`}>
+                      <label className={`block mb-2 text-2xs font-bold ${theme.textMuted}`}>📷 صورة الإيصال (اختياري)</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 1024 * 1024) {
+                              showToast('الصورة كبيرة جدًا (الحد الأقصى 1 MB)', 'error');
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => setNewInvoiceImage(reader.result as string);
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className={`w-full ${theme.input} p-2 rounded-lg text-xs`}
+                      />
+                      {newInvoiceImage && (
+                        <div className="mt-2 flex items-center gap-3">
+                          <img src={newInvoiceImage} alt="Invoice" className="w-16 h-16 object-cover rounded-lg border border-[#8b5cf6]/50" />
+                          <button
+                            type="button"
+                            onClick={() => setNewInvoiceImage(null)}
+                            className="text-rose-400 hover:underline text-2xs font-bold"
+                          >
+                            🗑️ حذف الصورة
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <button
                       type="submit"
                       className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-bold py-2.5 rounded-lg text-xs"

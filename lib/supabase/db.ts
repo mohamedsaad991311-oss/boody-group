@@ -276,6 +276,7 @@ export async function upsertSupplierInvoice(invoice: {
   parts?: string[];
   notes?: string;
   status?: 'pending' | 'partial' | 'paid';
+  invoiceImage?: string;
 }) {
   const supabase = createClient();
   const { error } = await supabase.from('supplier_invoices').upsert({
@@ -288,11 +289,11 @@ export async function upsertSupplierInvoice(invoice: {
     parts: invoice.parts || [],
     notes: invoice.notes || null,
     status: invoice.status || 'pending',
+    invoice_image: invoice.invoiceImage || null,
   }, { onConflict: 'id' });
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
-
 export async function deleteSupplierInvoice(id: string) {
   const supabase = createClient();
   const { error } = await supabase.from('supplier_invoices').delete().eq('id', id);
