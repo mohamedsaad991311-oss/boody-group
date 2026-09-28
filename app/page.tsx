@@ -152,6 +152,9 @@ const downloadFile = (filename: string, content: string, mime = 'text/plain;char
    ========================================================================= */
 
 export default function BoodyGroupSystem() {
+    // 📅 دالة تنسيق التاريخ (YYYY-MM-DD)
+  const formatDate = (date: Date): string => date.toLocaleDateString('en-CA');
+
 
   /* ------------------------- States ------------------------- */
 
@@ -266,6 +269,33 @@ export default function BoodyGroupSystem() {
   const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<any | null>(null);
 
+  
+ // 📄 فواتير الموردين
+const [supplierInvoices, setSupplierInvoices] = useState<any[]>([]);
+const [newInvoiceNumber, setNewInvoiceNumber] = useState('');
+const [newInvoiceDate, setNewInvoiceDate] = useState(new Date().toLocaleDateString('en-CA'));
+const [newInvoiceTotal, setNewInvoiceTotal] = useState<number>(0);
+const [newInvoiceParts, setNewInvoiceParts] = useState('');
+const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
+
+// 💵 دفعات الموردين
+const [supplierPayments, setSupplierPayments] = useState<any[]>([]);
+const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
+const [newPaymentDate, setNewPaymentDate] = useState(new Date().toLocaleDateString('en-CA'));
+const [newPaymentMethod, setNewPaymentMethod] = useState<'cash' | 'bank' | 'wallet'>('cash');
+const [newPaymentNotes, setNewPaymentNotes] = useState('');
+
+// ↩️ مرتجعات الموردين
+const [supplierReturns, setSupplierReturns] = useState<any[]>([]);
+const [newReturnPartName, setNewReturnPartName] = useState('');
+const [newReturnBrand, setNewReturnBrand] = useState('');
+const [newReturnQuantity, setNewReturnQuantity] = useState<number>(1);
+const [newReturnUnitPrice, setNewReturnUnitPrice] = useState<number>(0);
+const [newReturnReason, setNewReturnReason] = useState('');
+const [newReturnDate, setNewReturnDate] = useState(new Date().toLocaleDateString('en-CA'));
+  // 🎛️ إدارة الـ Modal
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [supplierActiveTab, setSupplierActiveTab] = useState<'invoices' | 'payments' | 'returns'>('invoices');
   /* ------------------------- ثوابت ------------------------- */
 
   const marketBrands = [
@@ -305,7 +335,7 @@ export default function BoodyGroupSystem() {
 
   /* ------------------------- دوال مساعدة ------------------------- */
 
-  const formatDate = (date: Date): string => date.toLocaleDateString('en-CA');
+
 
   const formatDateTime = (date: Date): string => {
     const d = formatDate(date);
@@ -367,12 +397,12 @@ export default function BoodyGroupSystem() {
   useEffect(() => {
     const loadFromSupabase = async () => {
       try {
-        const [rRes, iRes, eRes] = await Promise.all([
-          fetchReceipts(),
-          fetchInventory(),
-          fetchExpenses(),
-        ]);
-
+        const [rRes, iRes, eRes, sRes] = await Promise.all([
+  fetchReceipts(),
+  fetchInventory(),
+  fetchExpenses(),
+  fetchSuppliers(),
+]);
         if (rRes.success && rRes.data.length > 0) {
           const mapped: Receipt[] = rRes.data.map((r: any) => ({
             id: r.id,
@@ -431,6 +461,11 @@ export default function BoodyGroupSystem() {
           }));
           setExpenses(mapped);
           localStorage.setItem('bg_expenses_v2', JSON.stringify(mapped));
+        }
+        
+        // 🏢 تحميل الموردين
+        if (sRes.success && sRes.data.length > 0) {
+          setSuppliers(sRes.data);
         }
       } catch (err) {
         console.error('خطأ في تحميل البيانات من Supabase:', err);
@@ -2956,6 +2991,28 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                             </div>
 
                             <div className="flex gap-2 mt-3">
+                                                            <button
+                                onClick={() => {
+                                  setSelectedSupplier(supplier);
+                                  setSupplierModalOpen(true);
+                                  setSupplierActiveTab('invoices');
+                                  
+                                  // تحميل الفواتير والدفعات والمرتجعات
+                                  (async () => {
+                                    const [invRes, payRes, retRes] = await Promise.all([
+                                      fetchSupplierInvoices(supplier.id),
+                                      fetchSupplierPayments(supplier.id),
+                                      fetchSupplierReturns(supplier.id),
+                                    ]);
+                                    if (invRes.success) setSupplierInvoices(invRes.data);
+                                    if (payRes.success) setSupplierPayments(payRes.data);
+                                    if (retRes.success) setSupplierReturns(retRes.data);
+                                  })();
+                                }}
+                                className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 px-3 py-2 rounded-xl text-2xs font-bold transition"
+                              >
+                                📄 التفاصيل
+                              </button>
                               <button
                                 onClick={() => {
                                   setEditingSupplierId(supplier.id);
@@ -3189,6 +3246,490 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
         </div>
       )}
 
+
+      {/* ================= 🏢 Supplier Details Modal ================= */}
+      {supplierModalOpen && selectedSupplier && (
+        <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className={`${theme.card} border rounded-2xl w-full max-w-3xl my-8`}>
+            
+            {/* Header */}
+            <div className="flex justify-between items-start p-5 border-b border-[#2d1f4a]">
+              <div>
+                <h3 className="font-bold text-[#8b5cf6] text-lg flex items-center gap-2">
+                  👤 {selectedSupplier.name}
+                </h3>
+                {selectedSupplier.phone && (
+                  <p className={`text-xs mt-1 ${theme.textMuted}`}>📞 {selectedSupplier.phone}</p>
+                )}
+                {selectedSupplier.notes && (
+                  <p className={`text-2xs mt-1 ${theme.textMuted}`}>📝 {selectedSupplier.notes}</p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setSupplierModalOpen(false);
+                  setSelectedSupplier(null);
+                  setSupplierInvoices([]);
+                  setSupplierPayments([]);
+                  setSupplierReturns([]);
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* إحصائيات */}
+            <div className="p-5 border-b border-[#2d1f4a]">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center">
+                  <span className="block text-2xs text-emerald-400 font-bold">إجمالي الفواتير</span>
+                  <strong className="text-lg font-black text-emerald-400">
+                    {supplierInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0).toLocaleString()} ج.م
+                  </strong>
+                </div>
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
+                  <span className="block text-2xs text-amber-400 font-bold">المرتجعات</span>
+                  <strong className="text-lg font-black text-amber-400">
+                    {supplierReturns.reduce((s, r) => s + Number(r.total_amount || 0), 0).toLocaleString()} ج.م
+                  </strong>
+                </div>
+                <div className="p-3 rounded-xl bg-[#8b5cf6]/10 border border-[#8b5cf6]/30 text-center">
+                  <span className="block text-2xs text-[#a78bfa] font-bold">المدفوع</span>
+                  <strong className="text-lg font-black text-[#a78bfa]">
+                    {supplierPayments.reduce((s, p) => s + Number(p.amount || 0), 0).toLocaleString()} ج.م
+                  </strong>
+                </div>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-center">
+                  <span className="block text-2xs text-rose-400 font-bold">المديونية</span>
+                  <strong className="text-lg font-black text-rose-400">
+                    {(
+                      supplierInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0)
+                      - supplierReturns.reduce((s, r) => s + Number(r.total_amount || 0), 0)
+                      - supplierPayments.reduce((s, p) => s + Number(p.amount || 0), 0)
+                    ).toLocaleString()} ج.م
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-[#2d1f4a]">
+              {[
+                { id: 'invoices', label: '📄 الفواتير', count: supplierInvoices.length },
+                { id: 'payments', label: '💵 الدفعات', count: supplierPayments.length },
+                { id: 'returns', label: '↩️ المرتجعات', count: supplierReturns.length },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSupplierActiveTab(tab.id as any)}
+                  className={`flex-1 py-3 text-xs font-bold transition-all ${
+                    supplierActiveTab === tab.id
+                      ? 'bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white'
+                      : `${theme.textMuted} hover:bg-[#8b5cf6]/10`
+                  }`}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+
+              {/* ========== الفواتير ========== */}
+              {supplierActiveTab === 'invoices' && (
+                <>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!newInvoiceNumber.trim() || newInvoiceTotal <= 0) {
+                        showToast('يرجى إدخال رقم الفاتورة والإجمالي', 'error');
+                        return;
+                      }
+                      
+                      const invoiceData = {
+                        id: generateId(),
+                        supplierId: selectedSupplier.id,
+                        invoiceNumber: newInvoiceNumber.trim(),
+                        invoiceDate: newInvoiceDate || formatDate(new Date()),
+                        totalAmount: Number(newInvoiceTotal),
+                        paidAmount: 0,
+                        parts: newInvoiceParts ? newInvoiceParts.split(',').map(p => p.trim()).filter(Boolean) : [],
+                        notes: newInvoiceNotes.trim(),
+                        status: 'pending' as const,
+                      };
+                      
+                      const result = await upsertSupplierInvoice(invoiceData);
+                      if (!result.success) {
+                        showToast('فشل حفظ الفاتورة: ' + result.error, 'error');
+                        return;
+                      }
+                      
+                      setSupplierInvoices(prev => [invoiceData, ...prev]);
+                      setNewInvoiceNumber('');
+           setNewInvoiceDate(formatDate(new Date()));
+                      setNewInvoiceTotal(0);
+                      setNewInvoiceParts('');
+                      setNewInvoiceNotes('');
+                      showToast('تم إضافة الفاتورة بنجاح ✅');
+                    }}
+                    className="p-4 rounded-xl border border-[#2d1f4a] bg-[#150e22] space-y-3"
+                  >
+                    <h4 className="font-bold text-xs text-[#8b5cf6]">➕ إضافة فاتورة جديدة</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={newInvoiceNumber}
+                        onChange={e => setNewInvoiceNumber(e.target.value)}
+                        placeholder="رقم الفاتورة *"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                      <input
+  type="date"
+  value={newInvoiceDate}
+  onChange={e => setNewInvoiceDate(e.target.value)}
+  className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+/>
+                      <input
+                        type="number"
+                        value={newInvoiceTotal || ''}
+                        onChange={e => setNewInvoiceTotal(Number(e.target.value))}
+                        placeholder="الإجمالي *"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={newInvoiceParts}
+                      onChange={e => setNewInvoiceParts(e.target.value)}
+                      placeholder="القطع (مفصولة بفاصلة)"
+                      className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                    />
+                    <input
+                      type="text"
+                      value={newInvoiceNotes}
+                      onChange={e => setNewInvoiceNotes(e.target.value)}
+                      placeholder="ملاحظات"
+                      className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-bold py-2.5 rounded-lg text-xs"
+                    >
+                      ➕ إضافة الفاتورة
+                    </button>
+                  </form>
+
+                  {/* قائمة الفواتير */}
+                  <div className="space-y-2">
+                    {supplierInvoices.length === 0 ? (
+                      <p className={`text-center py-8 text-xs ${theme.textMuted}`}>لا توجد فواتير بعد</p>
+                    ) : (
+                      supplierInvoices.map(inv => (
+                        <div key={inv.id} className="p-3 rounded-xl border border-[#2d1f4a] bg-[#150e22] flex justify-between items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong className="text-xs text-[#8b5cf6]">#{inv.invoice_number}</strong>
+                              <span className={`text-2xs ${theme.textMuted}`}>📅 {inv.invoice_date}</span>
+                              <span className={`text-2xs px-2 py-0.5 rounded-full ${
+                                inv.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400' :
+                                inv.status === 'partial' ? 'bg-amber-500/10 text-amber-400' :
+                                'bg-rose-500/10 text-rose-400'
+                              }`}>
+                                {inv.status === 'paid' ? 'مدفوع' : inv.status === 'partial' ? 'جزئي' : 'غير مدفوع'}
+                              </span>
+                            </div>
+                            {inv.parts && inv.parts.length > 0 && (
+                              <p className={`text-2xs mt-1 ${theme.textMuted} truncate`}>
+                                📦 {inv.parts.join(' • ')}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-left shrink-0">
+                            <strong className="text-sm font-black text-emerald-400">{Number(inv.total_amount).toLocaleString()} ج.م</strong>
+                            <p className={`text-2xs ${theme.textMuted}`}>مدفوع: {Number(inv.paid_amount).toLocaleString()}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              openConfirm('حذف فاتورة', `هل تريد حذف الفاتورة #${inv.invoice_number}؟`, async () => {
+                                const result = await deleteSupplierInvoice(inv.id);
+                                if (result.success) {
+                                  setSupplierInvoices(prev => prev.filter(i => i.id !== inv.id));
+                                  showToast('تم حذف الفاتورة', 'info');
+                                } else {
+                                  showToast('فشل الحذف: ' + result.error, 'error');
+                                }
+                                closeConfirm();
+                              });
+                            }}
+                            className="bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-1.5 rounded-lg text-xs shrink-0"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ========== الدفعات ========== */}
+              {supplierActiveTab === 'payments' && (
+                <>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (newPaymentAmount <= 0) {
+                        showToast('يرجى إدخال المبلغ', 'error');
+                        return;
+                      }
+                      
+                      const paymentData = {
+                        id: generateId(),
+                        supplierId: selectedSupplier.id,
+                        amount: Number(newPaymentAmount),
+                        paymentDate: newPaymentDate || formatDate(new Date()),
+                        method: newPaymentMethod,
+                        notes: newPaymentNotes.trim(),
+                      };
+                      
+                      const result = await upsertSupplierPayment(paymentData);
+                      if (!result.success) {
+                        showToast('فشل حفظ الدفعة: ' + result.error, 'error');
+                        return;
+                      }
+                      
+                      setSupplierPayments(prev => [paymentData, ...prev]);
+                      setNewPaymentAmount(0);
+                      setNewPaymentDate('');
+                      setNewPaymentMethod('cash');
+                      setNewPaymentNotes('');
+                      showToast('تم تسجيل الدفعة بنجاح ✅');
+                    }}
+                    className="p-4 rounded-xl border border-[#2d1f4a] bg-[#150e22] space-y-3"
+                  >
+                    <h4 className="font-bold text-xs text-[#8b5cf6]">➕ تسجيل دفعة جديدة</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="number"
+                        value={newPaymentAmount || ''}
+                        onChange={e => setNewPaymentAmount(Number(e.target.value))}
+                        placeholder="المبلغ *"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                      <input
+  type="date"
+  value={newInvoiceDate}
+  onChange={e => setNewInvoiceDate(e.target.value)}
+  className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+/>
+                      <select
+                        value={newPaymentMethod}
+                        onChange={e => setNewPaymentMethod(e.target.value as any)}
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs font-bold`}
+                      >
+                        <option value="cash">💵 نقدي</option>
+                        <option value="bank">🏦 تحويل بنكي</option>
+                        <option value="wallet">📱 محفظة</option>
+                      </select>
+                    </div>
+                    <input
+                      type="text"
+                      value={newPaymentNotes}
+                      onChange={e => setNewPaymentNotes(e.target.value)}
+                      placeholder="ملاحظات"
+                      className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-bold py-2.5 rounded-lg text-xs"
+                    >
+                      ➕ تسجيل الدفعة
+                    </button>
+                  </form>
+
+                  {/* قائمة الدفعات */}
+                  <div className="space-y-2">
+                    {supplierPayments.length === 0 ? (
+                      <p className={`text-center py-8 text-xs ${theme.textMuted}`}>لا توجد دفعات بعد</p>
+                    ) : (
+                      supplierPayments.map(pay => (
+                        <div key={pay.id} className="p-3 rounded-xl border border-[#2d1f4a] bg-[#150e22] flex justify-between items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong className="text-xs text-[#a78bfa]">💵 دفعة</strong>
+                              <span className={`text-2xs ${theme.textMuted}`}>📅 {pay.payment_date}</span>
+                              <span className={`text-2xs px-2 py-0.5 rounded-full ${
+                                pay.method === 'cash' ? 'bg-emerald-500/10 text-emerald-400' :
+                                pay.method === 'bank' ? 'bg-blue-500/10 text-blue-400' :
+                                'bg-purple-500/10 text-purple-400'
+                              }`}>
+                                {pay.method === 'cash' ? 'نقدي' : pay.method === 'bank' ? 'بنكي' : 'محفظة'}
+                              </span>
+                            </div>
+                            {pay.notes && (
+                              <p className={`text-2xs mt-1 ${theme.textMuted}`}>📝 {pay.notes}</p>
+                            )}
+                          </div>
+                          <strong className="text-sm font-black text-emerald-400 shrink-0">{Number(pay.amount).toLocaleString()} ج.م</strong>
+                          <button
+                            onClick={() => {
+                              openConfirm('حذف دفعة', `هل تريد حذف الدفعة؟`, async () => {
+                                const result = await deleteSupplierPayment(pay.id);
+                                if (result.success) {
+                                  setSupplierPayments(prev => prev.filter(p => p.id !== pay.id));
+                                  showToast('تم حذف الدفعة', 'info');
+                                } else {
+                                  showToast('فشل الحذف: ' + result.error, 'error');
+                                }
+                                closeConfirm();
+                              });
+                            }}
+                            className="bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-1.5 rounded-lg text-xs shrink-0"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ========== المرتجعات ========== */}
+              {supplierActiveTab === 'returns' && (
+                <>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!newReturnPartName.trim() || newReturnQuantity <= 0) {
+                        showToast('يرجى إدخال اسم القطعة والكمية', 'error');
+                        return;
+                      }
+                      
+                      const totalAmount = Number(newReturnQuantity) * Number(newReturnUnitPrice);
+                      const returnData = {
+                        id: generateId(),
+                        supplierId: selectedSupplier.id,
+                        partName: newReturnPartName.trim(),
+                        brand: newReturnBrand.trim(),
+                        quantity: Number(newReturnQuantity),
+                        unitPrice: Number(newReturnUnitPrice),
+                        totalAmount: totalAmount,
+                        reason: newReturnReason.trim(),
+                        returnDate: newReturnDate || formatDate(new Date()),
+                      };
+                      
+                      const result = await upsertSupplierReturn(returnData);
+                      if (!result.success) {
+                        showToast('فشل حفظ المرتجع: ' + result.error, 'error');
+                        return;
+                      }
+                      
+                      setSupplierReturns(prev => [returnData, ...prev]);
+                      setNewReturnPartName('');
+                      setNewReturnBrand('');
+                      setNewReturnQuantity(1);
+                      setNewReturnUnitPrice(0);
+                      setNewReturnReason('');
+                      setNewReturnDate('');
+                      showToast('تم تسجيل المرتجع بنجاح ✅');
+                    }}
+                    className="p-4 rounded-xl border border-[#2d1f4a] bg-[#150e22] space-y-3"
+                  >
+                    <h4 className="font-bold text-xs text-[#8b5cf6]">➕ تسجيل مرتجع جديد</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+                      <input
+                        type="text"
+                        value={newReturnPartName}
+                        onChange={e => setNewReturnPartName(e.target.value)}
+                        placeholder="اسم القطعة *"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                      <input
+                        type="text"
+                        value={newReturnBrand}
+                        onChange={e => setNewReturnBrand(e.target.value)}
+                        placeholder="الشركة"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                      <input
+                        type="number"
+                        value={newReturnQuantity || ''}
+                        onChange={e => setNewReturnQuantity(Number(e.target.value))}
+                        placeholder="الكمية *"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                      <input
+                        type="number"
+                        value={newReturnUnitPrice || ''}
+                        onChange={e => setNewReturnUnitPrice(Number(e.target.value))}
+                        placeholder="سعر الوحدة"
+                        className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={newReturnReason}
+                      onChange={e => setNewReturnReason(e.target.value)}
+                      placeholder="سبب الإرجاع"
+                      className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-bold py-2.5 rounded-lg text-xs"
+                    >
+                      ➕ تسجيل المرتجع
+                    </button>
+                  </form>
+
+                  {/* قائمة المرتجعات */}
+                  <div className="space-y-2">
+                    {supplierReturns.length === 0 ? (
+                      <p className={`text-center py-8 text-xs ${theme.textMuted}`}>لا توجد مرتجعات بعد</p>
+                    ) : (
+                      supplierReturns.map(ret => (
+                        <div key={ret.id} className="p-3 rounded-xl border border-[#2d1f4a] bg-[#150e22] flex justify-between items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <strong className="text-xs text-amber-400">↩️ {ret.part_name}</strong>
+                              {ret.brand && <span className={`text-2xs ${theme.textMuted}`}>{ret.brand}</span>}
+                              <span className={`text-2xs ${theme.textMuted}`}>الكمية: {ret.quantity}</span>
+                            </div>
+                            {ret.reason && (
+                              <p className={`text-2xs mt-1 ${theme.textMuted}`}>السبب: {ret.reason}</p>
+                            )}
+                          </div>
+                          <strong className="text-sm font-black text-amber-400 shrink-0">{Number(ret.total_amount).toLocaleString()} ج.م</strong>
+                          <button
+                            onClick={() => {
+                              openConfirm('حذف مرتجع', `هل تريد حذف المرتجع؟`, async () => {
+                                const result = await deleteSupplierReturn(ret.id);
+                                if (result.success) {
+                                  setSupplierReturns(prev => prev.filter(r => r.id !== ret.id));
+                                  showToast('تم حذف المرتجع', 'info');
+                                } else {
+                                  showToast('فشل الحذف: ' + result.error, 'error');
+                                }
+                                closeConfirm();
+                              });
+                            }}
+                            className="bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-1.5 rounded-lg text-xs shrink-0"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+        </div>
+      )}
       {/* ================= ⚠️ Confirm Modal ================= */}
       {confirmDialog.open && (
         <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
