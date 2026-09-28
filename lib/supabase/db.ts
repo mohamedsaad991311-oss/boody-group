@@ -211,3 +211,193 @@ export async function deleteInventoryMovement(id: string) {
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+// ============================================================
+// 🏢 Suppliers — إدارة الموردين
+// ============================================================
+
+export async function fetchSuppliers() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('suppliers')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function upsertSupplier(supplier: {
+  id: string;
+  name: string;
+  phone?: string;
+  notes?: string;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase.from('suppliers').upsert({
+    id: supplier.id,
+    name: supplier.name,
+    phone: supplier.phone || null,
+    notes: supplier.notes || null,
+  }, { onConflict: 'id' });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteSupplier(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('suppliers').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// ============================================================
+// 📄 Supplier Invoices — فواتير الموردين
+// ============================================================
+
+export async function fetchSupplierInvoices(supplierId?: string) {
+  const supabase = createClient();
+  let query = supabase
+    .from('supplier_invoices')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (supplierId) query = query.eq('supplier_id', supplierId);
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function upsertSupplierInvoice(invoice: {
+  id: string;
+  supplierId: string;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  totalAmount: number;
+  paidAmount?: number;
+  parts?: string[];
+  notes?: string;
+  status?: 'pending' | 'partial' | 'paid';
+}) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_invoices').upsert({
+    id: invoice.id,
+    supplier_id: invoice.supplierId,
+    invoice_number: invoice.invoiceNumber || null,
+    invoice_date: invoice.invoiceDate || null,
+    total_amount: invoice.totalAmount || 0,
+    paid_amount: invoice.paidAmount || 0,
+    parts: invoice.parts || [],
+    notes: invoice.notes || null,
+    status: invoice.status || 'pending',
+  }, { onConflict: 'id' });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteSupplierInvoice(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_invoices').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// ============================================================
+// 💵 Supplier Payments — دفعات الموردين
+// ============================================================
+
+export async function fetchSupplierPayments(supplierId?: string) {
+  const supabase = createClient();
+  let query = supabase
+    .from('supplier_payments')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (supplierId) query = query.eq('supplier_id', supplierId);
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function upsertSupplierPayment(payment: {
+  id: string;
+  supplierId: string;
+  invoiceId?: string;
+  amount: number;
+  paymentDate?: string;
+  method?: 'cash' | 'bank' | 'wallet';
+  notes?: string;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_payments').upsert({
+    id: payment.id,
+    supplier_id: payment.supplierId,
+    invoice_id: payment.invoiceId || null,
+    amount: payment.amount || 0,
+    payment_date: payment.paymentDate || null,
+    method: payment.method || 'cash',
+    notes: payment.notes || null,
+  }, { onConflict: 'id' });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteSupplierPayment(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_payments').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// ============================================================
+// ↩️ Supplier Returns — مرتجعات الموردين
+// ============================================================
+
+export async function fetchSupplierReturns(supplierId?: string) {
+  const supabase = createClient();
+  let query = supabase
+    .from('supplier_returns')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (supplierId) query = query.eq('supplier_id', supplierId);
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function upsertSupplierReturn(ret: {
+  id: string;
+  supplierId: string;
+  invoiceId?: string;
+  partName?: string;
+  brand?: string;
+  deviceModel?: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalAmount?: number;
+  reason?: string;
+  returnDate?: string;
+  notes?: string;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_returns').upsert({
+    id: ret.id,
+    supplier_id: ret.supplierId,
+    invoice_id: ret.invoiceId || null,
+    part_name: ret.partName || null,
+    brand: ret.brand || null,
+    device_model: ret.deviceModel || null,
+    quantity: ret.quantity || 0,
+    unit_price: ret.unitPrice || 0,
+    total_amount: ret.totalAmount || 0,
+    reason: ret.reason || null,
+    return_date: ret.returnDate || null,
+    notes: ret.notes || null,
+  }, { onConflict: 'id' });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteSupplierReturn(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('supplier_returns').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}

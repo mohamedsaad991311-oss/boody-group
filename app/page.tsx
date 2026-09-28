@@ -1,5 +1,14 @@
 "use client";
-import { fetchReceipts, fetchInventory, fetchExpenses, upsertReceipts, upsertInventory, upsertExpenses, deleteInventoryItem, deleteReceipt, deleteExpense, logInventoryMovement, fetchInventoryMovements } from '@/lib/supabase/db';
+import { 
+  fetchReceipts, fetchInventory, fetchExpenses, 
+  upsertReceipts, upsertInventory, upsertExpenses, 
+  deleteInventoryItem, deleteReceipt, deleteExpense, 
+  logInventoryMovement, fetchInventoryMovements,
+  fetchSuppliers, upsertSupplier, deleteSupplier,
+  fetchSupplierInvoices, upsertSupplierInvoice, deleteSupplierInvoice,
+  fetchSupplierPayments, upsertSupplierPayment, deleteSupplierPayment,
+  fetchSupplierReturns, upsertSupplierReturn, deleteSupplierReturn
+} from '@/lib/supabase/db';
 import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from '@/components/SplashScreen';
 import BottomNav from '@/components/BottomNav';
@@ -13,7 +22,7 @@ import { syncAllToSupabase } from '@/lib/supabase/db';
 type DeviceStatus = 'pending' | 'ready' | 'waiting_parts' | 'done';
 type TabId =
   | 'home' | 'receiving' | 'receipts' | 'delivery'
-  | 'inventory' | 'expenses' | 'reports'
+  | 'inventory' | 'suppliers' | 'expenses' | 'reports'
   | 'scanner' | 'cloud' | 'staff' | 'settings';
 type UserRole = 'admin' | 'technician';
 type ToastType = 'success' | 'error' | 'info';
@@ -248,6 +257,14 @@ export default function BoodyGroupSystem() {
 
   // Cloud
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'syncing' | 'synced'>('synced');
+  
+  // 🏢 الموردين
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [newSupplierNotes, setNewSupplierNotes] = useState('');
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<any | null>(null);
 
   /* ------------------------- ثوابت ------------------------- */
 
@@ -1381,19 +1398,19 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
   /* ------------------------- Menu ------------------------- */
 
   const menuItems: { id: TabId; label: string; icon: string }[] = [
-    { id: 'home', label: 'الرئيسية', icon: '🏠' },
-    { id: 'receiving', label: 'استلام جهاز', icon: '📱' },
-    { id: 'receipts', label: 'الايصالات', icon: '📋' },
-    { id: 'scanner', label: 'الباركود', icon: '📷' },
-    { id: 'staff', label: 'فريق العمل', icon: '👨‍💼' },
-    { id: 'cloud', label: 'الحالة السحابية', icon: '☁️' },
-    { id: 'delivery', label: 'تسليم', icon: '✅' },
-    { id: 'inventory', label: 'المخزن', icon: '📦' },
-    { id: 'expenses', label: 'الخزينة', icon: '💵' },
-    { id: 'reports', label: 'الارباح', icon: '📊' },
-    { id: 'settings', label: 'الاعدادات', icon: '⚙️' },
-  ];
-
+  { id: 'home', label: 'الرئيسية', icon: '🏠' },
+  { id: 'receiving', label: 'استلام جهاز', icon: '📱' },
+  { id: 'receipts', label: 'الايصالات', icon: '📋' },
+  { id: 'scanner', label: 'الباركود', icon: '📷' },
+  { id: 'staff', label: 'فريق العمل', icon: '👨‍💼' },
+  { id: 'cloud', label: 'الحالة السحابية', icon: '☁️' },
+  { id: 'delivery', label: 'تسليم', icon: '✅' },
+  { id: 'inventory', label: 'المخزن', icon: '📦' },
+  { id: 'suppliers', label: 'الموردين', icon: '🏢' },
+  { id: 'expenses', label: 'الخزينة', icon: '💵' },
+  { id: 'reports', label: 'الارباح', icon: '📊' },
+  { id: 'settings', label: 'الاعدادات', icon: '⚙️' },
+];
   const isRestrictedForTech = (tabId: TabId) =>
     userRole === 'technician' && (tabId === 'reports' || tabId === 'expenses' || tabId === 'staff' || tabId === 'settings');  /* =========================================================================
      الواجهة (JSX) — الجزء 1
@@ -2776,6 +2793,204 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                     </p>
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+
+          {/* ================= 🏢 الموردين ================= */}
+          {activeTab === 'suppliers' && (
+            <div className="space-y-6">
+              {userRole === 'technician' ? (
+                <div className={`${theme.card} p-8 rounded-xl border text-center text-rose-400 font-bold`}>
+                  عذراً، قسم الموردين مخصص للمدير العام فقط.
+                </div>
+              ) : (
+                <>
+                  {/* إحصائيات الموردين */}
+                  <div className={`${theme.card} p-5 rounded-2xl border flex justify-between items-center flex-wrap gap-4`}>
+                    <div>
+                      <h2 className="font-bold text-[#8b5cf6] text-lg">🏢 إدارة الموردين</h2>
+                      <p className={`mt-0.5 text-xs ${theme.textMuted}`}>إدارة كاملة للموردين والفواتير والمديونيات.</p>
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                      <div className="bg-[#8b5cf6]/10 border border-[#8b5cf6]/20 px-4 py-2 rounded-xl text-center">
+                        <span className="text-2xs text-[#8b5cf6] block font-bold">عدد الموردين</span>
+                        <strong className="text-lg font-black text-[#8b5cf6]">{suppliers.length}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* نموذج إضافة مورد */}
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!newSupplierName.trim()) {
+                        showToast('يرجى إدخال اسم المورد', 'error');
+                        return;
+                      }
+                      
+                      const supplierData = {
+                        id: editingSupplierId || generateId(),
+                        name: newSupplierName.trim(),
+                        phone: newSupplierPhone.trim(),
+                        notes: newSupplierNotes.trim(),
+                      };
+                      
+                      // حفظ في Supabase
+                      const result = await upsertSupplier(supplierData);
+                      if (!result.success) {
+                        showToast('فشل حفظ المورد: ' + result.error, 'error');
+                        return;
+                      }
+                      
+                      // تحديث الواجهة
+                      if (editingSupplierId) {
+                        setSuppliers(prev => prev.map(s => s.id === editingSupplierId ? supplierData : s));
+                        showToast('تم تحديث المورد بنجاح ✅');
+                      } else {
+                        setSuppliers(prev => [supplierData, ...prev]);
+                        showToast('تم إضافة المورد بنجاح ✅');
+                      }
+                      
+                      // Reset
+                      setNewSupplierName('');
+                      setNewSupplierPhone('');
+                      setNewSupplierNotes('');
+                      setEditingSupplierId(null);
+                    }}
+                    className={`${theme.card} p-6 rounded-2xl border space-y-4`}
+                  >
+                    <h3 className="font-bold text-[#8b5cf6]">
+                      {editingSupplierId ? '✏️ تعديل مورد' : '➕ إضافة مورد جديد'}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className={`block mb-1 text-xs ${theme.textMuted}`}>اسم المورد *</label>
+                        <input
+                          type="text"
+                          value={newSupplierName}
+                          onChange={e => setNewSupplierName(e.target.value)}
+                          placeholder="مثال: أحمد للموبايلات"
+                          className={`w-full ${theme.input} p-3.5 rounded-xl`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block mb-1 text-xs ${theme.textMuted}`}>رقم الهاتف</label>
+                        <input
+                          type="text"
+                          value={newSupplierPhone}
+                          onChange={e => setNewSupplierPhone(e.target.value)}
+                          placeholder="01012345678"
+                          className={`w-full ${theme.input} p-3.5 rounded-xl`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`block mb-1 text-xs ${theme.textMuted}`}>ملاحظات</label>
+                        <input
+                          type="text"
+                          value={newSupplierNotes}
+                          onChange={e => setNewSupplierNotes(e.target.value)}
+                          placeholder="ملاحظات إضافية..."
+                          className={`w-full ${theme.input} p-3.5 rounded-xl`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] hover:opacity-90 text-white font-bold py-3 rounded-xl shadow-lg transition text-xs"
+                      >
+                        {editingSupplierId ? '💾 حفظ التعديلات' : '➕ إضافة المورد'}
+                      </button>
+                      {editingSupplierId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingSupplierId(null);
+                            setNewSupplierName('');
+                            setNewSupplierPhone('');
+                            setNewSupplierNotes('');
+                          }}
+                          className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold px-6 py-3 rounded-xl text-xs"
+                        >
+                          إلغاء
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {/* قائمة الموردين */}
+                  <div className={`${theme.card} p-6 rounded-2xl border space-y-4`}>
+                    <h3 className="font-bold text-[#8b5cf6]">📋 قائمة الموردين</h3>
+
+                    {suppliers.length === 0 ? (
+                      <div className={`text-center py-12 ${theme.textMuted}`}>
+                        <span className="text-4xl block mb-3">🏢</span>
+                        <p className="text-sm font-bold">لا يوجد موردين بعد</p>
+                        <p className="text-xs mt-1">ابدأ بإضافة أول مورد من النموذج أعلاه</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {suppliers.map(supplier => (
+                          <div
+                            key={supplier.id}
+                            className={`p-4 rounded-xl border transition-all duration-200 hover:shadow-lg ${
+                              darkMode ? 'bg-[#150e22] border-[#2d1f4a] hover:border-[#8b5cf6]/50' : 'bg-white border-[#e9e5f5] hover:border-[#8b5cf6]/50'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2 mb-2">
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-sm truncate flex items-center gap-2">
+                                  👤 {supplier.name}
+                                </h4>
+                                {supplier.phone && (
+                                  <p className={`text-2xs mt-1 ${theme.textMuted}`}>📞 {supplier.phone}</p>
+                                )}
+                                {supplier.notes && (
+                                  <p className={`text-2xs mt-1 ${theme.textMuted} truncate`}>📝 {supplier.notes}</p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={() => {
+                                  setEditingSupplierId(supplier.id);
+                                  setNewSupplierName(supplier.name);
+                                  setNewSupplierPhone(supplier.phone || '');
+                                  setNewSupplierNotes(supplier.notes || '');
+                                }}
+                                className="flex-1 bg-[#8b5cf6]/10 text-[#8b5cf6] border border-[#8b5cf6]/30 hover:bg-[#8b5cf6]/20 px-3 py-2 rounded-xl text-2xs font-bold transition"
+                              >
+                                ✏️ تعديل
+                              </button>
+                              <button
+                                onClick={() => {
+                                  openConfirm('حذف مورد', `هل تريد حذف "${supplier.name}"؟ سيتم حذف كل فواتيره ودفعاته.`, async () => {
+                                    const result = await deleteSupplier(supplier.id);
+                                    if (result.success) {
+                                      setSuppliers(prev => prev.filter(s => s.id !== supplier.id));
+                                      showToast('تم حذف المورد', 'info');
+                                    } else {
+                                      showToast('فشل الحذف: ' + result.error, 'error');
+                                    }
+                                    closeConfirm();
+                                  });
+                                }}
+                                className="bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 px-3 py-2 rounded-xl text-2xs font-bold transition"
+                              >
+                                🗑️ حذف
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
