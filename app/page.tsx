@@ -294,6 +294,7 @@ const [newReturnQuantity, setNewReturnQuantity] = useState<number>(1);
 const [newReturnUnitPrice, setNewReturnUnitPrice] = useState<number>(0);
 const [newReturnReason, setNewReturnReason] = useState('');
 const [newReturnDate, setNewReturnDate] = useState(new Date().toLocaleDateString('en-CA'));
+const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
   // 🎛️ إدارة الـ Modal
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierActiveTab, setSupplierActiveTab] = useState<'invoices' | 'payments' | 'returns'>('invoices');
