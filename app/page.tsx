@@ -281,7 +281,7 @@ const [newInvoiceNotes, setNewInvoiceNotes] = useState('');
 // 💵 دفعات الموردين
 const [supplierPayments, setSupplierPayments] = useState<any[]>([]);
 const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
-const [newPaymentDate, setNewPaymentDate] = useState(new Date().toLocaleDateString('en-CA'));
+const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
 const [newPaymentMethod, setNewPaymentMethod] = useState<'cash' | 'bank' | 'wallet'>('cash');
 const [newPaymentNotes, setNewPaymentNotes] = useState('');
 
@@ -3610,31 +3610,35 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                       
                       const totalAmount = Number(newReturnQuantity) * Number(newReturnUnitPrice);
                       const returnData = {
-                        id: generateId(),
-                        supplierId: selectedSupplier.id,
-                        partName: newReturnPartName.trim(),
-                        brand: newReturnBrand.trim(),
-                        quantity: Number(newReturnQuantity),
-                        unitPrice: Number(newReturnUnitPrice),
-                        totalAmount: totalAmount,
-                        reason: newReturnReason.trim(),
-                        returnDate: newReturnDate || formatDate(new Date()),
-                      };
+  id: generateId(),
+  supplierId: selectedSupplier.id,
+  invoiceId: newReturnInvoiceId || undefined,
+  partName: newReturnPartName.trim(),
+  brand: newReturnBrand.trim(),
+  quantity: Number(newReturnQuantity),
+  unitPrice: Number(newReturnUnitPrice),
+  totalAmount: totalAmount,
+  reason: newReturnReason.trim(),
+  returnDate: newReturnDate || new Date().toLocaleDateString('en-CA'),
+};
                       
                       const result = await upsertSupplierReturn(returnData);
-                      if (!result.success) {
-                        showToast('فشل حفظ المرتجع: ' + result.error, 'error');
-                        return;
-                      }
-                      
-                      setSupplierReturns(prev => [returnData, ...prev]);
-                      setNewReturnPartName('');
-                      setNewReturnBrand('');
-                      setNewReturnQuantity(1);
-                      setNewReturnUnitPrice(0);
-                      setNewReturnReason('');
-                      setNewReturnDate('');
-                      showToast('تم تسجيل المرتجع بنجاح ✅');
+if (!result.success) {
+  showToast('فشل حفظ المرتجع: ' + result.error, 'error');
+  return;
+}
+
+setSupplierReturns(prev => [returnData, ...prev]);
+
+showToast('تم تسجيل المرتجع بنجاح ✅');
+
+setNewReturnPartName('');
+setNewReturnBrand('');
+setNewReturnQuantity(1);
+setNewReturnUnitPrice(0);
+setNewReturnReason('');
+setNewReturnDate(new Date().toLocaleDateString('en-CA'));
+setNewReturnInvoiceId('');
                     }}
                     className="p-4 rounded-xl border border-[#2d1f4a] bg-[#150e22] space-y-3"
                   >
@@ -3669,13 +3673,26 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                         className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
                       />
                     </div>
-                    <input
+                                        <input
                       type="text"
                       value={newReturnReason}
                       onChange={e => setNewReturnReason(e.target.value)}
                       placeholder="سبب الإرجاع"
                       className={`w-full ${theme.input} p-2.5 rounded-lg text-xs`}
                     />
+
+                    <select
+                      value={newReturnInvoiceId}
+                      onChange={e => setNewReturnInvoiceId(e.target.value)}
+                      className={`w-full ${theme.input} p-2.5 rounded-lg text-xs font-bold`}
+                    >
+                      <option value="">📄 بدون ربط بفاتورة</option>
+                      {supplierInvoices.map(inv => (
+                        <option key={inv.id} value={inv.id}>
+                          #{inv.invoice_number} — {Number(inv.total_amount).toLocaleString()} ج.م ({inv.invoice_date})
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="submit"
                       className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-bold py-2.5 rounded-lg text-xs"
@@ -3693,7 +3710,12 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                         <div key={ret.id} className="p-3 rounded-xl border border-[#2d1f4a] bg-[#150e22] flex justify-between items-center gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <strong className="text-xs text-amber-400">↩️ {ret.part_name}</strong>
+<strong className="text-xs text-amber-400">↩️ {ret.part_name}</strong>
+{ret.invoice_id && (
+  <span className="text-2xs px-2 py-0.5 rounded-full bg-[#8b5cf6]/10 text-[#a78bfa]">
+    مربوط بفاتورة
+  </span>
+)}
                               {ret.brand && <span className={`text-2xs ${theme.textMuted}`}>{ret.brand}</span>}
                               <span className={`text-2xs ${theme.textMuted}`}>الكمية: {ret.quantity}</span>
                             </div>
@@ -3725,6 +3747,74 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                   </div>
                 </>
               )}
+
+
+              {/* 📱 زر إرسال كشف الحساب */}
+              <div className="p-5 border-t border-[#2d1f4a]">
+                <button
+                  onClick={() => {
+                    const invoicesTotal = supplierInvoices.reduce((s, i) => s + Number(i.total_amount || 0), 0);
+                    const returnsTotal = supplierReturns.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+                    const paymentsTotal = supplierPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+                    const debt = invoicesTotal - returnsTotal - paymentsTotal;
+
+                    let msg = `📋 كشف حساب — MS Fix\n`;
+                    msg += `━━━━━━━━━━━━━━━━━━━\n`;
+                    msg += `👤 المورد: ${selectedSupplier.name}\n`;
+                    if (selectedSupplier.phone) msg += `📞 ${selectedSupplier.phone}\n`;
+                    msg += `📅 الفترة: كل المعاملات\n`;
+                    msg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+
+                    if (supplierInvoices.length > 0) {
+                      msg += `📄 الفواتير (${supplierInvoices.length}):\n`;
+                      supplierInvoices.forEach(inv => {
+                        msg += `• #${inv.invoice_number || 'بدون رقم'} — ${inv.invoice_date || ''} — ${Number(inv.total_amount).toLocaleString()} ج.م`;
+                        if (Number(inv.paid_amount) > 0) msg += ` (مدفوع ${Number(inv.paid_amount).toLocaleString()})`;
+                        msg += `\n`;
+                      });
+                      msg += `\n`;
+                    }
+
+                    if (supplierReturns.length > 0) {
+                      msg += `↩️ المرتجعات (${supplierReturns.length}):\n`;
+                      supplierReturns.forEach(ret => {
+                        msg += `• ${ret.part_name || 'قطعة'} — ${ret.quantity || 0} × ${Number(ret.unit_price || 0).toLocaleString()} = ${Number(ret.total_amount).toLocaleString()} ج.م`;
+                        if (ret.reason) msg += ` (${ret.reason})`;
+                        msg += `\n`;
+                      });
+                      msg += `\n`;
+                    }
+
+                    if (supplierPayments.length > 0) {
+                      msg += `💵 الدفعات (${supplierPayments.length}):\n`;
+                      supplierPayments.forEach(pay => {
+                        const methodLabel = pay.method === 'cash' ? 'نقدي' : pay.method === 'bank' ? 'بنكي' : 'محفظة';
+                        msg += `• ${pay.payment_date || ''} — ${Number(pay.amount).toLocaleString()} ج.م (${methodLabel})\n`;
+                      });
+                      msg += `\n`;
+                    }
+
+                    msg += `━━━━━━━━━━━━━━━━━━━\n`;
+                    msg += `💰 إجمالي الفواتير: ${invoicesTotal.toLocaleString()} ج.م\n`;
+                    if (returnsTotal > 0) msg += `↩️ إجمالي المرتجعات: ${returnsTotal.toLocaleString()} ج.م\n`;
+                    msg += `💵 إجمالي المدفوع: ${paymentsTotal.toLocaleString()} ج.م\n`;
+                    msg += `🔴 المديونية: ${debt.toLocaleString()} ج.م\n`;
+                    msg += `━━━━━━━━━━━━━━━━━━━\n\n`;
+                    msg += `شكراً لتعاملكم معنا 🙏\n`;
+                    msg += `📞 MS Fix — ${shopPhone}`;
+
+                    if (!selectedSupplier.phone) {
+                      showToast('لا يوجد رقم هاتف للمورد', 'error');
+                      return;
+                    }
+
+                    openWhatsAppDirect(selectedSupplier.phone, msg);
+                  }}
+                  className="w-full bg-gradient-to-br from-[#25D366] to-[#128C7E] hover:opacity-90 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-95 text-sm"
+                >
+                  📱 إرسال كشف حساب واتساب
+                </button>
+              </div>
 
             </div>
           </div>
