@@ -1,4 +1,5 @@
 "use client";
+import { createClient as createSupabaseClient } from '@/lib/supabase/client';
 import { 
   fetchReceipts, fetchInventory, fetchExpenses, 
   upsertReceipts, upsertInventory, upsertExpenses, 
@@ -300,6 +301,8 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierActiveTab, setSupplierActiveTab] = useState<'invoices' | 'payments' | 'returns'>('invoices');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+
   /* ------------------------- ثوابت ------------------------- */
 
   const marketBrands = [
@@ -477,6 +480,18 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
     };
     
     loadFromSupabase();
+    
+    // 👤 جلب بيانات المستخدم الحالي
+    const loadUser = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) setCurrentUserEmail(user.email);
+      } catch (err) {
+        console.error('خطأ في جلب المستخدم:', err);
+      }
+    };
+    loadUser();
   }, []);
 
   // تحميل أولي من localStorage
@@ -828,6 +843,29 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
       setCloudSyncStatus('synced');
       showToast('تمت مزامنة وحفظ السحابة المحلية بنجاح 100% 💻✨');
     }, 600);
+  };
+  
+  // 🚪 تسجيل الخروج
+  const handleLogout = () => {
+    openConfirm(
+      'تسجيل الخروج',
+      'هل أنت متأكد من تسجيل الخروج من النظام؟',
+      async () => {
+        try {
+          const supabase = createSupabaseClient();
+          await supabase.auth.signOut();
+          showToast('تم تسجيل الخروج بنجاح 👋');
+          closeConfirm();
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 500);
+        } catch (err) {
+          console.error('خطأ في تسجيل الخروج:', err);
+          showToast('فشل تسجيل الخروج', 'error');
+          closeConfirm();
+        }
+      }
+    );
   };
 
   /* ------------------------- Inventory Integration ------------------------- */
@@ -3205,6 +3243,38 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                   >
                     💾 حفظ كافة إعدادات النظام وتحديث الاسم
                   </button>
+                  
+                  {/* 🔐 الأمان والوصول */}
+                  <div className={`p-4 rounded-xl border space-y-4 ${
+                    darkMode ? 'bg-[#150e22] border-[#2d1f4a]' : 'bg-[#faf9fc] border-[#e9e5f5]'
+                  }`}>
+                    <h4 className="font-bold text-xs text-[#8b5cf6] flex items-center gap-2">
+                      🔐 الأمان والوصول
+                    </h4>
+
+                    <div className={`flex items-center justify-between p-3 rounded-xl ${darkMode ? 'bg-[#0f0a1a]' : 'bg-white'}`}>
+                      <span className={`text-xs font-bold ${theme.textMuted}`}>👤 المستخدم الحالي:</span>
+                      <span className="text-xs font-black text-[#a78bfa] truncate">
+                        {currentUserEmail || 'غير معروف'}
+                      </span>
+                    </div>
+
+                    <div className={`flex items-center justify-between p-3 rounded-xl ${darkMode ? 'bg-[#0f0a1a]' : 'bg-white'}`}>
+                      <span className={`text-xs font-bold ${theme.textMuted}`}>🕒 آخر دخول:</span>
+                      <span className="text-xs font-black text-emerald-400">
+                        {new Date().toLocaleDateString('ar-EG')}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full bg-gradient-to-br from-rose-600 to-rose-500 hover:opacity-90 text-white font-bold py-3 rounded-xl shadow-lg transition-all duration-200 hover:scale-[1.02] active:scale-95 text-xs flex items-center justify-center gap-2"
+                    >
+                      🚪 تسجيل الخروج من النظام
+                    </button>
+                  </div>
+
                 </>
               )}
             </div>
