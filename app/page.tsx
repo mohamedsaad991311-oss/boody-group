@@ -299,6 +299,7 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
   // 🎛️ إدارة الـ Modal
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [supplierActiveTab, setSupplierActiveTab] = useState<'invoices' | 'payments' | 'returns'>('invoices');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   /* ------------------------- ثوابت ------------------------- */
 
   const marketBrands = [
@@ -3467,6 +3468,17 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                     ) : (
                       supplierInvoices.map(inv => (
                         <div key={inv.id} className="p-3 rounded-xl border border-[#2d1f4a] bg-[#150e22] flex justify-between items-center gap-2">
+                        
+                          {/* 📷 صورة الإيصال */}
+                          {inv.invoice_image && (
+                            <img
+                              src={inv.invoice_image}
+                              alt="Invoice"
+                              className="w-12 h-12 object-cover rounded-lg cursor-pointer border border-[#8b5cf6]/50 hover:scale-105 transition-transform shrink-0"
+                              onClick={() => setPreviewImage(inv.invoice_image)}
+                              title="اضغط لعرض الصورة كاملة"
+                            />
+                          )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <strong className="text-xs text-[#8b5cf6]">#{inv.invoice_number}</strong>
@@ -3859,6 +3871,37 @@ setNewReturnInvoiceId('');
           </div>
         </div>
       )}
+      
+      {/* ================= 🖼️ Image Preview Modal ================= */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-[1100] bg-black/95 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage(null);
+              }}
+              className="absolute -top-12 right-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition"
+              title="إغلاق"
+            >
+              ✕
+            </button>
+            <img
+              src={previewImage}
+              alt="Invoice"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-2xl border border-[#8b5cf6]/30 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-center text-2xs text-[#b8b0d0] mt-4">
+              اضغط في أي مكان خارج الصورة للإغلاق
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ================= ⚠️ Confirm Modal ================= */}
       {confirmDialog.open && (
         <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
