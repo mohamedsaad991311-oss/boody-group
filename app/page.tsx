@@ -8,7 +8,8 @@ import {
   fetchSuppliers, upsertSupplier, deleteSupplier,
   fetchSupplierInvoices, upsertSupplierInvoice, deleteSupplierInvoice,
   fetchSupplierPayments, upsertSupplierPayment, deleteSupplierPayment,
-  fetchSupplierReturns, upsertSupplierReturn, deleteSupplierReturn
+  fetchSupplierReturns, upsertSupplierReturn, deleteSupplierReturn,
+  createStaffMember, fetchStaff, updateStaffMember, deleteStaffMember, getCurrentUserRole
 } from '@/lib/supabase/db';
 import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from '@/components/SplashScreen';
@@ -194,9 +195,10 @@ export default function BoodyGroupSystem() {
   // فريق العمل
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [newStaffName, setNewStaffName] = useState('');
-  const [newStaffPhone, setNewStaffPhone] = useState('');
+ const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('technician');
   const [newStaffPin, setNewStaffPin] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
 
   // نموذج الاستلام
   const [cName, setCName] = useState('');
@@ -797,26 +799,72 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
 
   /* ------------------------- Staff ------------------------- */
 
-  const handleAddStaff = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStaffName.trim() || !newStaffPhone.trim() || !newStaffPin.trim()) {
-      showToast('يرجى إكمال اسم الموظف، الهاتف ورقم الـ PIN', 'error');
-      return;
-    }
-    const newMember: StaffMember = {
-      id: generateId(),
-      name: newStaffName.trim(),
-      phone: newStaffPhone.trim(),
-      role: newStaffRole,
-      pin: newStaffPin.trim(),
-    };
-    saveStaffList([...staffList, newMember]);
-    setNewStaffName('');
-    setNewStaffPhone('');
-    setNewStaffPin('');
-    showToast('تم إضافة الفني/الموظف الجديد بنجاح 👨‍🔧✨');
-    pushNotification('موظف جديد', `تم إضافة ${newMember.name} كـ ${newMember.role === 'admin' ? 'مدير' : 'فني'}`);
+  const handleAddStaff = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!newStaffName.trim() || !newStaffEmail.trim()) {
+    showToast('يرجى إدخال الاسم والإيميل', 'error');
+    return;
+  }
+
+  const tempPassword = newStaffPassword.trim() || 'Boody@2024';
+  
+  const result = await createStaffMember({
+    name: newStaffName.trim(),
+    email: newStaffEmail.trim(),
+    role: newStaffRole,
+    pin: tempPassword,
+  });
+
+  if (!result.success) {
+    showToast('فشل إضافة الموظف: ' + result.error, 'error');
+    return;
+  }
+
+  // إضافة في القائمة المحلية
+  const newMember: StaffMember = {
+    id: result.data.id,
+    name: newStaffName.trim(),
+    phone: '',
+    role: newStaffRole,
+    pin: tempPassword,
   };
+  setStaffList([newMember, ...staffList]);
+
+  // رسالة نجاح
+  showToast(`✅ تم إضافة ${newStaffName}. بيانات الدخول: ${newStaffEmail} / ${tempPassword}`, 'success');
+  pushNotification('موظف جديد', `تم إضافة ${newStaffName} كـ ${newStaffRole === 'admin' ? 'مدير' : 'فني'}`);
+
+  // حفظ نسخة من بيانات الدخول للـ WhatsApp
+  const waMessage = 
+    `🎉 مرحباً ${newStaffName}!\n\n` +
+    `تم إضافتك على نظام MS Fix\n\n` +
+    `📧 الإيميل: ${newStaffEmail}\n` +
+    `🔑 كلمة السر: ${tempPassword}\n` +
+    `👤 الدور: ${newStaffRole === 'admin' ? 'مدير عام' : 'فني صيانة'}\n\n` +
+    `🔗 رابط الدخول: ${typeof window !== 'undefined' ? window.location.origin : ''}/login\n\n` +
+    `⚠️ يرجى تغيير كلمة السر من الإعدادات بعد أول تسجيل دخول.`;
+  
+  // فتح WhatsApp (اختياري)
+  if (confirm(`تم إضافة الموظف بنجاح!\n\nهل تريد إرسال بيانات الدخول عبر WhatsApp؟`)) {
+    const phone = prompt('رقم واتساب الموظف (مع كود الدولة، مثال: 201012345678):');
+    if (phone) openWhatsAppDirect(phone, waMessage);
+  }
+
+    // Reset
+  setNewStaffName('');
+  setNewStaffEmail('');
+  setNewStaffPin('');
+  setNewStaffPassword('');
+  setNewStaffRole('technician');
+
+  // ⚠️ بعد الإضافة — هتحتاج تسجل دخول تاني (لأن signUp حوّل جلستك)
+  setTimeout(() => {
+    showToast('🔄 جاري إعادة توجيهك لتسجيل الدخول...', 'info');
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1500);
+  }, 2000);
+};
 
   const handleDeleteStaff = (id: string) => {
     const member = staffList.find(s => s.id === id);
@@ -2636,8 +2684,8 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                         <input type="text" required value={newStaffName} onChange={e => setNewStaffName(e.target.value)} placeholder="مثال: أحمد مصطفى" className={`w-full ${theme.input} p-3.5 rounded-xl`} />
                       </div>
                       <div>
-                        <label className={`block mb-1 ${theme.textMuted}`}>الهاتف / واتساب *</label>
-                        <input type="text" required value={newStaffPhone} onChange={e => setNewStaffPhone(e.target.value)} placeholder="010xxxxxxxx" className={`w-full ${theme.input} p-3.5 rounded-xl`} />
+                        <label className={`block mb-1 ${theme.textMuted}`}>البريد الإلكتروني *</label>
+                        <input type="email" required value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} placeholder="employee@example.com" className={`w-full ${theme.input} p-3.5 rounded-xl`} />
                       </div>
                       <div>
                         <label className={`block mb-1 ${theme.textMuted}`}>الدور</label>
@@ -2650,6 +2698,20 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                         <label className={`block mb-1 ${theme.textMuted}`}>رمز سري PIN *</label>
                         <input type="password" required value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} placeholder="4 أرقام" className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
                       </div>
+                      <div>
+  <label className={`block mb-1 ${theme.textMuted}`}>كلمة السر للموظف *</label>
+  <input
+    type="text"
+    required
+    value={newStaffPassword}
+    onChange={e => setNewStaffPassword(e.target.value)}
+    placeholder="8+ أحرف، حروف كبيرة + أرقام"
+    className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`}
+  />
+  <span className={`text-2xs ${theme.textMuted} block mt-1`}>
+    💡 مثال: Boody@2024
+  </span>
+</div>
                       <div className="md:col-span-4 pt-2">
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-3.5 rounded-2xl shadow transition text-xs">
                           + حفظ وإضافة المهندس الجديد

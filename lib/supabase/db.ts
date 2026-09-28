@@ -402,3 +402,115 @@ export async function deleteSupplierReturn(id: string) {
   if (error) return { success: false, error: error.message };
   return { success: true };
 }
+
+
+// ============================================================
+// 👥 Staff Management — إدارة فريق العمل مع Auth
+// ============================================================
+
+export async function fetchStaff() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('staff')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) return { success: false, error: error.message, data: [] };
+  return { success: true, data: data || [] };
+}
+
+export async function createStaffMember(staff: {
+  name: string;
+  email: string;
+  role: 'admin' | 'technician';
+  pin?: string;
+}) {
+  const supabase = createClient();
+  
+  try {
+    // 1) إنشاء حساب Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: staff.email,
+     password: staff.pin || 'Boody@2024',
+    });
+    
+    if (authError) {
+      return { success: false, error: authError.message };
+    }
+    
+    if (!authData.user) {
+      return { success: false, error: 'فشل إنشاء الحساب' };
+    }
+    
+    // 2) إضافة في جدول staff
+    const staffId = crypto.randomUUID();
+const { error: staffError } = await supabase.from('staff').insert({
+  id: staffId,
+  name: staff.name,
+  phone: '',
+  email: staff.email,
+  role: staff.role,
+  pin: staff.pin || '12345678',
+  user_id: authData.user.id,
+  is_active: true,
+  created_at: new Date().toISOString(),
+});
+    
+        if (staffError) {
+      return { success: false, error: staffError.message };
+    }
+    
+    // 3) ⚠️ signOut فورًا — عشان ما نسيطرش على جلسة الموظف
+    await supabase.auth.signOut();
+    
+    return { 
+      success: true, 
+      data: { 
+        id: staffId, 
+        user_id: authData.user.id,
+        email: staff.email,
+        password: staff.pin || '12345678',
+        needsReLogin: true,
+      } 
+    };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'حدث خطأ' };
+  }
+}
+
+export async function updateStaffMember(staffId: string, data: {
+  name?: string;
+  email?: string;
+  role?: 'admin' | 'technician';
+  pin?: string;
+  is_active?: boolean;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('staff')
+    .update(data)
+    .eq('id', staffId);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function deleteStaffMember(staffId: string) {
+  const supabase = createClient();
+  const { error } = await supabase.from('staff').delete().eq('id', staffId);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+export async function getCurrentUserRole() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, role: null };
+  
+  const { data, error } = await supabase
+    .from('staff')
+    .select('role, name')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  
+  if (error || !data) return { success: false, role: null };
+  return { success: true, role: data.role, name: data.name };
+}
