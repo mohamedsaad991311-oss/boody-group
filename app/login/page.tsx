@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
@@ -47,10 +48,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0e1117] text-[#e3e8ee] flex items-center justify-center p-4" dir="rtl">
       <div className="w-full max-w-md bg-[#161b22] border border-[#30363d] rounded-3xl p-8 shadow-xl space-y-6">
         <div className="text-center space-y-2">
-          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black p-4 rounded-2xl text-lg shadow-md inline-flex items-center justify-center w-16 h-16 mx-auto">
-            BG
+          <div className="bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white font-black p-4 rounded-2xl text-lg shadow-md inline-flex items-center justify-center w-16 h-16 mx-auto">
+            MS
           </div>
-          <h1 className="text-xl font-black">مركز Boody Group</h1>
+          <h1 className="text-xl font-black">MS Fix</h1>
           <p className="text-xs text-[#8b949e]">
             {mode === 'login' ? 'تسجيل الدخول للنظام' : 'إنشاء حساب جديد'}
           </p>
@@ -61,7 +62,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => { setMode('login'); setError(''); setSuccess(''); }}
             className={`py-2 rounded-lg text-xs font-bold transition ${
-              mode === 'login' ? 'bg-indigo-600 text-white shadow' : 'text-[#8b949e]'
+              mode === 'login' ? 'bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white shadow' : 'text-[#8b949e]'
             }`}
           >
             دخول
@@ -70,7 +71,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => { setMode('signup'); setError(''); setSuccess(''); }}
             className={`py-2 rounded-lg text-xs font-bold transition ${
-              mode === 'signup' ? 'bg-indigo-600 text-white shadow' : 'text-[#8b949e]'
+              mode === 'signup' ? 'bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] text-white shadow' : 'text-[#8b949e]'
             }`}
           >
             حساب جديد
@@ -85,8 +86,8 @@ export default function LoginPage() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="admin@boody.com"
-              className="w-full bg-[#0d1117] border border-[#30363d] text-white placeholder-[#8b949e] focus:border-indigo-500 outline-none p-3.5 rounded-xl text-sm"
+              placeholder="admin@msfix.com"
+              className="w-full bg-[#0d1117] border border-[#30363d] text-white placeholder-[#8b949e] focus:border-[#8b5cf6] outline-none p-3.5 rounded-xl text-sm"
             />
           </div>
 
@@ -99,9 +100,20 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="6 أحرف على الأقل"
-              className="w-full bg-[#0d1117] border border-[#30363d] text-white placeholder-[#8b949e] focus:border-indigo-500 outline-none p-3.5 rounded-xl text-sm"
+              className="w-full bg-[#0d1117] border border-[#30363d] text-white placeholder-[#8b949e] focus:border-[#8b5cf6] outline-none p-3.5 rounded-xl text-sm"
             />
           </div>
+
+          {mode === 'login' && (
+            <div className="text-left">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-[#a78bfa] hover:text-[#c4b5fd] hover:underline font-bold transition"
+              >
+                🔑 نسيت كلمة السر؟
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl">
@@ -118,7 +130,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-indigo-600/20 transition text-sm"
+            className="w-full bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] hover:opacity-90 disabled:opacity-60 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[#8b5cf6]/20 transition text-sm"
           >
             {loading ? '...' : mode === 'login' ? '🔓 تسجيل الدخول' : '✨ إنشاء الحساب'}
           </button>
