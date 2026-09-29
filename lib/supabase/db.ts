@@ -407,6 +407,36 @@ export async function deleteSupplierReturn(id: string) {
 // ============================================================
 // 👥 Staff Management — إدارة فريق العمل مع Auth
 // ============================================================
+export async function createStaffMember(staff: {
+  name: string;
+  email: string;
+  role: 'admin' | 'technician';
+  password: string;
+}) {
+  try {
+    const response = await fetch('/api/admin/create-staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: staff.name,
+        email: staff.email,
+        password: staff.password,
+        role: staff.role,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'فشل إضافة الموظف' };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'حدث خطأ في الاتصال' };
+  }
+}
+
 
 export async function fetchStaff() {
   const supabase = createClient();
@@ -418,64 +448,6 @@ export async function fetchStaff() {
   return { success: true, data: data || [] };
 }
 
-export async function createStaffMember(staff: {
-  name: string;
-  email: string;
-  role: 'admin' | 'technician';
-  pin?: string;
-}) {
-  const supabase = createClient();
-  
-  try {
-    // 1) إنشاء حساب Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: staff.email,
-     password: staff.pin || 'Boody@2024',
-    });
-    
-    if (authError) {
-      return { success: false, error: authError.message };
-    }
-    
-    if (!authData.user) {
-      return { success: false, error: 'فشل إنشاء الحساب' };
-    }
-    
-    // 2) إضافة في جدول staff
-    const staffId = crypto.randomUUID();
-const { error: staffError } = await supabase.from('staff').insert({
-  id: staffId,
-  name: staff.name,
-  phone: '',
-  email: staff.email,
-  role: staff.role,
-  pin: staff.pin || '12345678',
-  user_id: authData.user.id,
-  is_active: true,
-  created_at: new Date().toISOString(),
-});
-    
-        if (staffError) {
-      return { success: false, error: staffError.message };
-    }
-    
-    // 3) ⚠️ signOut فورًا — عشان ما نسيطرش على جلسة الموظف
-    await supabase.auth.signOut();
-    
-    return { 
-      success: true, 
-      data: { 
-        id: staffId, 
-        user_id: authData.user.id,
-        email: staff.email,
-        password: staff.pin || '12345678',
-        needsReLogin: true,
-      } 
-    };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'حدث خطأ' };
-  }
-}
 
 export async function updateStaffMember(staffId: string, data: {
   name?: string;

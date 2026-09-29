@@ -197,7 +197,7 @@ export default function BoodyGroupSystem() {
   const [newStaffName, setNewStaffName] = useState('');
  const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('technician');
-  const [newStaffPin, setNewStaffPin] = useState('');
+
   const [newStaffPassword, setNewStaffPassword] = useState('');
 
   // نموذج الاستلام
@@ -799,20 +799,20 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
 
   /* ------------------------- Staff ------------------------- */
 
-  const handleAddStaff = async (e: React.FormEvent) => {
+ const handleAddStaff = async (e: React.FormEvent) => {
   e.preventDefault();
-  if (!newStaffName.trim() || !newStaffEmail.trim()) {
-    showToast('يرجى إدخال الاسم والإيميل', 'error');
+  if (!newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()) {
+    showToast('يرجى إدخال الاسم والإيميل وكلمة السر', 'error');
     return;
   }
 
-  const tempPassword = newStaffPassword.trim() || 'Boody@2024';
-  
+  const tempPassword = newStaffPassword.trim();
+
   const result = await createStaffMember({
     name: newStaffName.trim(),
     email: newStaffEmail.trim(),
     role: newStaffRole,
-    pin: tempPassword,
+    password: tempPassword,
   });
 
   if (!result.success) {
@@ -834,8 +834,8 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
   showToast(`✅ تم إضافة ${newStaffName}. بيانات الدخول: ${newStaffEmail} / ${tempPassword}`, 'success');
   pushNotification('موظف جديد', `تم إضافة ${newStaffName} كـ ${newStaffRole === 'admin' ? 'مدير' : 'فني'}`);
 
-  // حفظ نسخة من بيانات الدخول للـ WhatsApp
-  const waMessage = 
+  // رسالة واتساب
+  const waMessage =
     `🎉 مرحباً ${newStaffName}!\n\n` +
     `تم إضافتك على نظام MS Fix\n\n` +
     `📧 الإيميل: ${newStaffEmail}\n` +
@@ -843,27 +843,22 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
     `👤 الدور: ${newStaffRole === 'admin' ? 'مدير عام' : 'فني صيانة'}\n\n` +
     `🔗 رابط الدخول: ${typeof window !== 'undefined' ? window.location.origin : ''}/login\n\n` +
     `⚠️ يرجى تغيير كلمة السر من الإعدادات بعد أول تسجيل دخول.`;
-  
-  // فتح WhatsApp (اختياري)
-  if (confirm(`تم إضافة الموظف بنجاح!\n\nهل تريد إرسال بيانات الدخول عبر WhatsApp؟`)) {
-    const phone = prompt('رقم واتساب الموظف (مع كود الدولة، مثال: 201012345678):');
-    if (phone) openWhatsAppDirect(phone, waMessage);
-  }
 
-    // Reset
+  // فتح WhatsApp (اختياري)
+  setTimeout(() => {
+    if (confirm(`تم إضافة ${newStaffName} بنجاح!\n\n${newStaffEmail} / ${tempPassword}\n\nهل تريد إرسال البيانات عبر WhatsApp؟`)) {
+      const phone = prompt('رقم واتساب الموظف (مع كود الدولة، مثال: 201012345678):');
+      if (phone) openWhatsAppDirect(phone, waMessage);
+    }
+  }, 500);
+
+  // Reset
   setNewStaffName('');
   setNewStaffEmail('');
-  setNewStaffPin('');
   setNewStaffPassword('');
   setNewStaffRole('technician');
 
-  // ⚠️ بعد الإضافة — هتحتاج تسجل دخول تاني (لأن signUp حوّل جلستك)
-  setTimeout(() => {
-    showToast('🔄 جاري إعادة توجيهك لتسجيل الدخول...', 'info');
-    setTimeout(() => {
-      window.location.href = '/login';
-    }, 1500);
-  }, 2000);
+  // ✅ مفيش signOut — إنت تفضل مدير
 };
 
   const handleDeleteStaff = (id: string) => {
@@ -2694,10 +2689,18 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                           <option value="admin">👨‍💼 مدير عام</option>
                         </select>
                       </div>
-                      <div>
-                        <label className={`block mb-1 ${theme.textMuted}`}>رمز سري PIN *</label>
-                        <input type="password" required value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} placeholder="4 أرقام" className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`} />
-                      </div>
+                      {/* حقل كلمة السر — واحد بس */}
+<div>
+  <label className={`block mb-1 ${theme.textMuted}`}>كلمة السر *</label>
+  <input
+    type="text"
+    required
+    value={newStaffPassword}
+    onChange={e => setNewStaffPassword(e.target.value)}
+    placeholder="8+ أحرف"
+    className={`w-full ${theme.input} p-3.5 rounded-xl font-bold`}
+  />
+</div>
                       <div>
   <label className={`block mb-1 ${theme.textMuted}`}>كلمة السر للموظف *</label>
   <input
