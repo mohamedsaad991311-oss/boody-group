@@ -402,99 +402,113 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
 
   /* ------------------------- Effects ------------------------- */
 
-    // 🔄 تحميل البيانات من Supabase (المرحلة 3B)
-  useEffect(() => {
-    const loadFromSupabase = async () => {
-      try {
-        const [rRes, iRes, eRes, sRes] = await Promise.all([
-  fetchReceipts(),
-  fetchInventory(),
-  fetchExpenses(),
-  fetchSuppliers(),
-]);
-        if (rRes.success && rRes.data.length > 0) {
-          const mapped: Receipt[] = rRes.data.map((r: any) => ({
-            id: r.id,
-            receiptNumber: r.receipt_number,
-            customerName: r.customer_name,
-            customerPhone: r.customer_phone,
-            deviceType: r.device_type || '',
-            deviceModel: r.device_model || '',
-            deviceColor: r.device_color || '',
-            imei: r.imei || '',
-            accessories: r.accessories || [],
-            issues: r.issues || [],
-            status: r.status || 'pending',
-            price: Number(r.price) || 0,
-            partCost: Number(r.part_cost) || 0,
-            deposit: Number(r.deposit) || 0,
-            notes: r.notes || '',
-            internalNotes: r.internal_notes || '',
-            receivedAt: r.received_at || '',
-            expectedDelivery: r.expected_delivery || '',
-            deliveredAt: r.delivered_at || undefined,
-            isArchived: r.is_archived || false,
-            archiveReason: r.archive_reason || undefined,
-            image: r.image || undefined,
-          }));
-          setReceipts(mapped);
-          localStorage.setItem('bg_local_cloud_receipts_v7', JSON.stringify(mapped));
-        }
+  // 🔄 تحميل البيانات من Supabase (المرحلة 3B)
+useEffect(() => {
+  const loadFromSupabase = async () => {
+    try {
+      const [rRes, iRes, eRes, sRes, stRes] = await Promise.all([
+        fetchReceipts(),
+        fetchInventory(),
+        fetchExpenses(),
+        fetchSuppliers(),
+        fetchStaff(),
+      ]);
 
-        if (iRes.success && iRes.data.length > 0) {
-          const mapped: InventoryItem[] = iRes.data.map((i: any) => ({
-  id: i.id,
-  brand: i.brand,
-  deviceModel: i.device_model || '',
-  partName: i.part_name,
-  quantity: Number(i.quantity) || 0,
-  costPrice: Number(i.cost_price) || 0,
-  supplierName: i.supplier_name || '',
-  minQuantity: Number(i.min_quantity) || 1,
-  category: i.category || 'original',
-  condition: i.condition || 'new',
-  notes: i.notes || '',
-}));
-          setInventory(mapped);
-          localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(mapped));
-        }
+      if (rRes.success && rRes.data.length > 0) {
+        const mapped: Receipt[] = rRes.data.map((r: any) => ({
+          id: r.id,
+          receiptNumber: r.receipt_number,
+          customerName: r.customer_name,
+          customerPhone: r.customer_phone,
+          deviceType: r.device_type || '',
+          deviceModel: r.device_model || '',
+          deviceColor: r.device_color || '',
+          imei: r.imei || '',
+          accessories: r.accessories || [],
+          issues: r.issues || [],
+          status: r.status || 'pending',
+          price: Number(r.price) || 0,
+          partCost: Number(r.part_cost) || 0,
+          deposit: Number(r.deposit) || 0,
+          notes: r.notes || '',
+          internalNotes: r.internal_notes || '',
+          receivedAt: r.received_at || '',
+          expectedDelivery: r.expected_delivery || '',
+          deliveredAt: r.delivered_at || undefined,
+          isArchived: r.is_archived || false,
+          archiveReason: r.archive_reason || undefined,
+          image: r.image || undefined,
+        }));
+        setReceipts(mapped);
+        localStorage.setItem('bg_local_cloud_receipts_v7', JSON.stringify(mapped));
+      }
 
-        if (eRes.success && eRes.data.length > 0) {
-          const mapped: ExpenseItem[] = eRes.data.map((e: any) => ({
-            id: e.id,
-            title: e.title,
-            amount: Number(e.amount) || 0,
-            type: e.type,
-            date: e.date || '',
-            isoDate: e.iso_date || undefined,
-          }));
-          setExpenses(mapped);
-          localStorage.setItem('bg_expenses_v2', JSON.stringify(mapped));
-        }
-        
-        // 🏢 تحميل الموردين
-        if (sRes.success && sRes.data.length > 0) {
-          setSuppliers(sRes.data);
-        }
-      } catch (err) {
-        console.error('خطأ في تحميل البيانات من Supabase:', err);
+      if (iRes.success && iRes.data.length > 0) {
+        const mapped: InventoryItem[] = iRes.data.map((i: any) => ({
+          id: i.id,
+          brand: i.brand,
+          deviceModel: i.device_model || '',
+          partName: i.part_name,
+          quantity: Number(i.quantity) || 0,
+          costPrice: Number(i.cost_price) || 0,
+          supplierName: i.supplier_name || '',
+          minQuantity: Number(i.min_quantity) || 1,
+          category: i.category || 'original',
+          condition: i.condition || 'new',
+          notes: i.notes || '',
+        }));
+        setInventory(mapped);
+        localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(mapped));
       }
-    };
-    
-    loadFromSupabase();
-    
-    // 👤 جلب بيانات المستخدم الحالي
-    const loadUser = async () => {
-      try {
-        const supabase = createSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email) setCurrentUserEmail(user.email);
-      } catch (err) {
-        console.error('خطأ في جلب المستخدم:', err);
+
+      if (eRes.success && eRes.data.length > 0) {
+        const mapped: ExpenseItem[] = eRes.data.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          amount: Number(e.amount) || 0,
+          type: e.type,
+          date: e.date || '',
+          isoDate: e.iso_date || undefined,
+        }));
+        setExpenses(mapped);
+        localStorage.setItem('bg_expenses_v2', JSON.stringify(mapped));
       }
-    };
-    loadUser();
-  }, []);
+
+      // 🏢 تحميل الموردين
+      if (sRes.success && sRes.data.length > 0) {
+        setSuppliers(sRes.data);
+      }
+
+      // 👥 تحميل فريق العمل
+      if (stRes.success && stRes.data.length > 0) {
+        const mappedStaff: StaffMember[] = stRes.data.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          phone: m.phone || '',
+          role: m.role as UserRole,
+          pin: m.pin || '',
+        }));
+        setStaffList(mappedStaff);
+      }
+    } catch (err) {
+      console.error('خطأ في تحميل البيانات من Supabase:', err);
+    }
+  };
+
+  loadFromSupabase();
+
+  // 👤 جلب بيانات المستخدم الحالي
+  const loadUser = async () => {
+    try {
+      const supabase = createSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) setCurrentUserEmail(user.email);
+    } catch (err) {
+      console.error('خطأ في جلب المستخدم:', err);
+    }
+  };
+  loadUser();
+}, []);
 
   // تحميل أولي من localStorage
   useEffect(() => {
