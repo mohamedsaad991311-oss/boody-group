@@ -48,3 +48,33 @@ next-env.d.ts
 *.3B-complete 
 .next_old/ 
 .agents/ 
+# Backup files
+*.before-*
+*.BEFORE-*
+*.AFTER-*
+*.DONE
+*.COMPLETE
+*.SECURITY
+*.STABLE-*
+*.FIXED
+*.BASE
+*.INVOICE-IMAGE*
+*.STAFF-*
+*.SUPPLIERS-*
+*.A-COMPLETE
+*.B-COMPLETE
+*.SUPPLIERS-DATES# Backup files 
+*.before-* 
+*.BEFORE-* 
+*.AFTER-* 
+*.DONE 
+*.COMPLETE 
+*.SECURITY 
+*.STABLE-* 
+*.FIXED 
+*.BASE 
+*.INVOICE-IMAGE* 
+*.STAFF-* 
+*.SUPPLIERS-* 
+*.A-COMPLETE 
+*.B-COMPLETE 
