@@ -159,6 +159,8 @@ export default function BoodyGroupSystem() {
 
 
   /* ------------------------- States ------------------------- */
+  const [reportFromDate, setReportFromDate] = useState('');
+const [reportToDate, setReportToDate] = useState('');
 
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [showSplash, setShowSplash] = useState(true);
@@ -1496,7 +1498,29 @@ return matchesBrand && matchesCategory && matchesCondition && matchesQuery;});
   const todayExtraIncome = todayExpenses.filter(e => e.type === 'income').reduce((acc, e) => acc + e.amount, 0);
 
   const todayNetProfit = (todayTotalRevenue - todayTotalCosts + todayExtraIncome) - todayExpenseTotal;
+// ---------- حسابات الفترة المخصصة ----------
+const rangeFrom = reportFromDate || todayStr;
+const rangeTo = reportToDate || todayStr;
 
+const rangeDelivered = receipts.filter(r => {
+  if (!r.deliveredAt || r.isArchived) return false;
+  const d = r.deliveredAt.split('T')[0];
+  return d >= rangeFrom && d <= rangeTo;
+});
+
+const rangeTotalRevenue = rangeDelivered.reduce((acc, r) => acc + r.price, 0);
+const rangeTotalCosts = rangeDelivered.reduce((acc, r) => acc + (r.partCost || 0), 0);
+
+const rangeExpenses = expenses.filter(e => {
+  if (!e.date) return false;
+  const d = e.date.split('T')[0];
+  return d >= rangeFrom && d <= rangeTo;
+});
+
+const rangeExpenseTotal = rangeExpenses.filter(e => e.type === 'expense').reduce((acc, e) => acc + e.amount, 0);
+const rangeExtraIncome = rangeExpenses.filter(e => e.type === 'income').reduce((acc, e) => acc + e.amount, 0);
+
+const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) - rangeExpenseTotal;
   const pendingCount = receipts.filter(r => r.status === 'pending').length;
   const readyCount = receipts.filter(r => r.status === 'ready').length;
   const waitingPartsCount = receipts.filter(r => r.status === 'waiting_parts').length;
@@ -2962,8 +2986,76 @@ return matchesBrand && matchesCategory && matchesCondition && matchesQuery;});
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <h2 className="font-bold text-emerald-400">📊 تقرير الحسابات والأرباح ({todayStr})</h2>
-
+                 <h2 className="font-bold text-emerald-400">
+  📊 تقرير الحسابات والأرباح ({rangeFrom} ← {rangeTo})
+</h2>
+{/* فلتر الفترة */}
+<div className={`${theme.card} p-4 rounded-2xl border mb-4`}>
+  <div className="flex flex-wrap gap-3 items-end">
+    <div className="flex-1 min-w-[140px]">
+      <label className={`block mb-1 text-xs ${theme.textMuted}`}>📅 من تاريخ</label>
+      <input
+        type="date"
+        value={reportFromDate}
+        onChange={e => setReportFromDate(e.target.value)}
+        className={`w-full ${theme.input} p-2.5 rounded-xl`}
+      />
+    </div>
+    <div className="flex-1 min-w-[140px]">
+      <label className={`block mb-1 text-xs ${theme.textMuted}`}>📅 إلى تاريخ</label>
+      <input
+        type="date"
+        value={reportToDate}
+        onChange={e => setReportToDate(e.target.value)}
+        className={`w-full ${theme.input} p-2.5 rounded-xl`}
+      />
+    </div>
+    <div className="flex gap-2">
+      <button
+        onClick={() => {
+          const today = new Date().toISOString().split('T')[0];
+          setReportFromDate(today);
+          setReportToDate(today);
+        }}
+        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
+      >
+        اليوم
+      </button>
+      <button
+        onClick={() => {
+          const today = new Date();
+          const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+          setReportFromDate(firstOfMonth.toISOString().split('T')[0]);
+          setReportToDate(today.toISOString().split('T')[0]);
+        }}
+        className="bg-violet-600 hover:bg-violet-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
+      >
+        الشهر
+      </button>
+      <button
+        onClick={() => {
+          const today = new Date();
+          const last7 = new Date();
+          last7.setDate(today.getDate() - 7);
+          setReportFromDate(last7.toISOString().split('T')[0]);
+          setReportToDate(today.toISOString().split('T')[0]);
+        }}
+        className="bg-pink-600 hover:bg-pink-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
+      >
+        آخر 7 أيام
+      </button>
+      <button
+        onClick={() => {
+          setReportFromDate('');
+          setReportToDate('');
+        }}
+        className="bg-zinc-600 hover:bg-zinc-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs"
+      >
+        مسح
+      </button>
+    </div>
+  </div>
+</div>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className={`${theme.card} p-5 rounded-2xl border`}>
                       <span className={`block mb-1 text-xs ${theme.textMuted}`}>إجمالي المبيعات (المسلّمة اليوم)</span>
