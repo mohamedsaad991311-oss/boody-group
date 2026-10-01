@@ -230,6 +230,10 @@ export default function BoodyGroupSystem() {
   // فلاتر المخزن
   const [inventorySearchQuery, setInventorySearchQuery] = useState('');
   const [selectedInventoryBrandFilter, setSelectedInventoryBrandFilter] = useState('all');
+const [selectedCategory, setSelectedCategory] = useState("الكل");
+const [selectedCondition, setSelectedCondition] = useState("الكل");
+const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // نموذج الخزينة
   const [expTitle, setExpTitle] = useState('');
@@ -1451,16 +1455,32 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
   });
 
   const filteredInventory = inventory.filter(item => {
-    const matchesBrand = selectedInventoryBrandFilter === 'all'
-      || item.brand.toLowerCase() === selectedInventoryBrandFilter.toLowerCase();
-    const q = normalizeArabic(inventorySearchQuery);
-    if (!q) return matchesBrand;
-    const matchesQuery =
-      normalizeArabic(item.partName).includes(q)
-      || normalizeArabic(item.brand).includes(q)
-      || normalizeArabic(item.deviceModel).includes(q);
-    return matchesBrand && matchesQuery;
-  });
+  const matchesBrand = selectedInventoryBrandFilter === 'all'
+    || item.brand.toLowerCase() === selectedInventoryBrandFilter.toLowerCase();
+  
+ const categoryMap: Record<string, string> = {
+  'أصلي': 'original',
+  'تجاري': 'copy',
+  'مسحوب': 'pulled'
+};
+const matchesCategory = selectedCategory === 'الكل'
+  || item.category === categoryMap[selectedCategory];
+  const conditionMap: Record<string, string> = {
+  'جديدة': 'new',
+  'مستعملة': 'used',
+  'للصيانة': 'maintenance'
+};
+const matchesCondition = selectedCondition === 'الكل'
+  || item.condition === conditionMap[selectedCondition];
+  const q = normalizeArabic(inventorySearchQuery);
+  if (!q) return matchesBrand && matchesCategory;
+  
+  const matchesQuery =
+    normalizeArabic(item.partName).includes(q)
+    || normalizeArabic(item.brand).includes(q)
+    || normalizeArabic(item.deviceModel).includes(q);
+  
+return matchesBrand && matchesCategory && matchesCondition && matchesQuery;});
 
   const outOfStockParts = inventory.filter(i => i.quantity === 0);
 
@@ -2447,7 +2467,40 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                     ))}
                   </div>
                 </div>
-
+{/* فلتر التصنيف */}
+<div className="flex gap-2 flex-wrap justify-end items-center">
+  <span className={`text-sm font-bold ${theme.textMuted}`}>فلترة التصنيف:</span>
+  {["الكل", "أصلي", "تجاري", "مسحوب"].map(cat => (
+    <button
+      key={cat}
+      onClick={() => setSelectedCategory(cat)}
+      className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+        selectedCategory === cat
+          ? "bg-indigo-600 text-white shadow"
+          : "bg-gray-100/10 text-gray-300 hover:bg-gray-100/20"
+      }`}
+    >
+      {cat}
+    </button>
+  ))}
+</div>
+{/* فلتر الحالة */}
+<div className="flex gap-2 flex-wrap justify-end items-center">
+  <span className={`text-sm font-bold ${theme.textMuted}`}>فلترة الحالة:</span>
+  {["الكل", "جديدة", "مستعملة", "للصيانة"].map(cond => (
+    <button
+      key={cond}
+      onClick={() => setSelectedCondition(cond)}
+      className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
+        selectedCondition === cond
+          ? "bg-emerald-600 text-white shadow"
+          : "bg-gray-100/10 text-gray-300 hover:bg-gray-100/20"
+      }`}
+    >
+      {cond}
+    </button>
+  ))}
+</div>
                 <input
                   value={inventorySearchQuery}
                   onChange={e => setInventorySearchQuery(e.target.value)}
@@ -2466,7 +2519,7 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                         <th className="p-3">الكمية</th>
                         <th className="p-3">تكلفة الوحدة</th>
                         <th className="p-3">إجمالي القيمة</th>
-                        <th className="p-3 text-center">حذف</th>
+                        <th className="p-3 text-center">إجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2484,14 +2537,27 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
                           </td>
                           <td className="p-3 font-semibold">{item.costPrice} ج.م</td>
                           <td className="p-3 font-black text-indigo-400">{(item.quantity * item.costPrice).toLocaleString()} ج.م</td>
-                          <td className="p-3 text-center">
-                            <button
-                              onClick={() => handleDeleteInventoryItem(item.id)}
-                              className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl font-bold"
-                            >
-                              🗑️
-                            </button>
-                          </td>
+                         <td className="p-3 text-center">
+  <div className="flex gap-1 justify-center">
+    <button
+      onClick={() => {
+        setEditingItem({ ...item });
+        setIsEditModalOpen(true);
+      }}
+      className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1.5 rounded-xl font-bold hover:bg-indigo-500/20 transition"
+      title="تعديل"
+    >
+      ✏️
+    </button>
+    <button
+      onClick={() => handleDeleteInventoryItem(item.id)}
+      className="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl font-bold hover:bg-rose-500/20 transition"
+      title="حذف"
+    >
+      🗑️
+    </button>
+  </div>
+</td>
                         </tr>
                       ))}
                       {filteredInventory.length === 0 && (
@@ -3371,6 +3437,7 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
           >
             <h3 className="font-bold text-indigo-400 text-center">🔒 التحقق من هوية المدير</h3>
             <p className={`text-xs text-center ${theme.textMuted}`}>أدخل رمز PIN للوصول إلى وضع المدير العام.</p>
+           
             <input
               type="password"
               autoFocus
@@ -3399,7 +3466,116 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
         </div>
       )}
 
+{/* ================= ✏️ Edit Inventory Modal ================= */}
+{isEditModalOpen && editingItem && (
+  <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className={`${theme.card} border rounded-2xl p-6 w-full max-w-md space-y-3`}>
+      <h3 className="font-bold text-indigo-400 text-lg">✏️ تعديل القطعة</h3>
 
+      <div>
+        <label className={`text-xs font-bold ${theme.textMuted}`}>اسم القطعة</label>
+        <input
+          className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+          value={editingItem.partName}
+          onChange={e => setEditingItem({ ...editingItem, partName: e.target.value })}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={`text-xs font-bold ${theme.textMuted}`}>الشركة</label>
+          <input
+            className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+            value={editingItem.brand}
+            onChange={e => setEditingItem({ ...editingItem, brand: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className={`text-xs font-bold ${theme.textMuted}`}>الموديل</label>
+          <input
+            className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+            value={editingItem.deviceModel || ""}
+            onChange={e => setEditingItem({ ...editingItem, deviceModel: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={`text-xs font-bold ${theme.textMuted}`}>الكمية</label>
+          <input
+            type="number"
+            className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+            value={editingItem.quantity}
+            onChange={e => setEditingItem({ ...editingItem, quantity: +e.target.value })}
+          />
+        </div>
+        <div>
+          <label className={`text-xs font-bold ${theme.textMuted}`}>التكلفة</label>
+          <input
+            type="number"
+            className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+            value={editingItem.costPrice}
+            onChange={e => setEditingItem({ ...editingItem, costPrice: +e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={`text-xs font-bold ${theme.textMuted}`}>التصنيف</label>
+        <select
+          className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+          value={editingItem.category || ""}
+          onChange={e => setEditingItem({ ...editingItem, category: e.target.value })}
+        >
+          <option value="original">أصلي</option>
+          <option value="copy">تجاري</option>
+          <option value="pulled">مسحوب</option>
+        </select>
+      </div>
+
+      <div>
+        <label className={`text-xs font-bold ${theme.textMuted}`}>ملاحظات</label>
+        <input
+          className={`w-full ${theme.input} p-2.5 rounded-xl mt-1`}
+          value={editingItem.notes || ""}
+          onChange={e => setEditingItem({ ...editingItem, notes: e.target.value })}
+        />
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={async () => {
+            const updated = inventory.map(i =>
+              i.id === editingItem.id ? editingItem : i
+            );
+            setInventory(updated);
+            localStorage.setItem('bg_internal_inventory_v5', JSON.stringify(updated));
+            
+            try {
+              await upsertInventory(updated);
+              showToast('تم تعديل القطعة', 'success');
+            } catch {
+              showToast('تم التعديل محليًا', 'info');
+            }
+            
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+          }}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl"
+        >
+          💾 حفظ
+        </button>
+        <button
+          onClick={() => { setIsEditModalOpen(false); setEditingItem(null); }}
+          className="flex-1 bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-3 rounded-xl"
+        >
+          إلغاء
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {/* ================= 🏢 Supplier Details Modal ================= */}
       {supplierModalOpen && selectedSupplier && (
         <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
