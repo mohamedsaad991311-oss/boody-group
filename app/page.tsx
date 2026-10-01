@@ -1589,8 +1589,18 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
   { id: 'reports', label: 'الارباح', icon: '📊' },
   { id: 'settings', label: 'الاعدادات', icon: '⚙️' },
 ];
-  const isRestrictedForTech = (tabId: TabId) =>
-    userRole === 'technician' && (tabId === 'reports' || tabId === 'expenses' || tabId === 'staff' || tabId === 'settings');  /* =========================================================================
+const isRestrictedForTech = (tabId: TabId) =>
+  userRole === 'technician' && (
+    tabId === 'reports' ||      // 📊 الأرباح
+    tabId === 'expenses' ||     // 💵 الخزينة
+    tabId === 'staff' ||        // 👨‍💼 فريق العمل
+    tabId === 'settings' ||     // ⚙️ الإعدادات
+    tabId === 'suppliers' ||    // 🏢 الموردين
+    tabId === 'inventory' ||    // 📦 المخزن
+       tabId === 'cloud'           // ☁️ الحالة السحابية
+  );
+
+  /* =========================================================================
      الواجهة (JSX) — الجزء 1
      ========================================================================= */
 
@@ -2542,8 +2552,6 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
                         <th className="p-3">قطعة الغيار</th>
                         <th className="p-3">التصنيف</th>
 <th className="p-3">الحالة</th>
-                        <th className="p-3">التصنيف</th>
-<th className="p-3">الحالة</th>
                         <th className="p-3">الكمية</th>
                         <th className="p-3">تكلفة الوحدة</th>
                         <th className="p-3">إجمالي القيمة</th>
@@ -2602,7 +2610,8 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
                       ))}
                       {filteredInventory.length === 0 && (
                         <tr>
-<td colSpan={9} className={`p-6 text-center ${theme.textMuted}`}>لا توجد قطع مطابقة.</td>                        </tr>
+                          <td colSpan={7} className={`p-6 text-center ${theme.textMuted}`}>لا توجد قطع مطابقة.</td>
+                        </tr>
                       )}
                     </tbody>
                   </table>
