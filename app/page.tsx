@@ -2540,6 +2540,10 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
                         <th className="p-3">الشركة</th>
                         <th className="p-3">موديل الجهاز</th>
                         <th className="p-3">قطعة الغيار</th>
+                        <th className="p-3">التصنيف</th>
+<th className="p-3">الحالة</th>
+                        <th className="p-3">التصنيف</th>
+<th className="p-3">الحالة</th>
                         <th className="p-3">الكمية</th>
                         <th className="p-3">تكلفة الوحدة</th>
                         <th className="p-3">إجمالي القيمة</th>
@@ -2554,6 +2558,18 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
                           <td className={`p-3 font-bold ${item.quantity === 0 ? 'text-rose-400' : ''}`}>
                             {item.partName} {item.quantity === 0 && ' (⚠️ نفذت)'}
                           </td>
+                          <td className="p-3">
+  {item.category === 'original' && <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-2xs font-bold">🟢 أصلي</span>}
+  {item.category === 'copy' && <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-400 text-2xs font-bold">✨ تجاري</span>}
+  {item.category === 'pulled' && <span className="px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-400 text-2xs font-bold">📤 مسحوب</span>}
+  {!item.category && <span className={`text-2xs ${theme.textMuted}`}>—</span>}
+</td>
+<td className="p-3">
+  {item.condition === 'new' && <span className="px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-400 text-2xs font-bold">🆕 جديدة</span>}
+  {item.condition === 'used' && <span className="px-2 py-0.5 rounded-lg bg-violet-500/10 text-violet-400 text-2xs font-bold">♻️ مستعملة</span>}
+  {item.condition === 'maintenance' && <span className="px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-400 text-2xs font-bold">🔧 للصيانة</span>}
+  {!item.condition && <span className={`text-2xs ${theme.textMuted}`}>—</span>}
+</td>
                           <td className="p-3">
                             <span className={`px-3 py-1 rounded-lg font-black ${item.quantity === 0 ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
                               {item.quantity}
@@ -2586,8 +2602,7 @@ const rangeNetProfit = (rangeTotalRevenue - rangeTotalCosts + rangeExtraIncome) 
                       ))}
                       {filteredInventory.length === 0 && (
                         <tr>
-                          <td colSpan={7} className={`p-6 text-center ${theme.textMuted}`}>لا توجد قطع مطابقة.</td>
-                        </tr>
+<td colSpan={9} className={`p-6 text-center ${theme.textMuted}`}>لا توجد قطع مطابقة.</td>                        </tr>
                       )}
                     </tbody>
                   </table>
