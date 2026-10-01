@@ -1,8 +1,19 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  console.log('🔍 Supabase Debug:');
+  console.log('URL:', url);
+  console.log('Key exists:', !!key);
+  console.log('Key length:', key?.length);
+
+  if (!url || !key) {
+    throw new Error('❌ Supabase URL or Key missing! Check .env.local');
+  }
+
+  return createBrowserClient(url, key);
 }
