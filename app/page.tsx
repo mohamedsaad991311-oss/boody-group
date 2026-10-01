@@ -9,7 +9,7 @@ import {
   fetchSupplierInvoices, upsertSupplierInvoice, deleteSupplierInvoice,
   fetchSupplierPayments, upsertSupplierPayment, deleteSupplierPayment,
   fetchSupplierReturns, upsertSupplierReturn, deleteSupplierReturn,
-  createStaffMember, fetchStaff, updateStaffMember, deleteStaffMember, getCurrentUserRole
+ createStaffMember, fetchStaff, updateStaffMember, deleteStaffMember, getCurrentUserRole, updateStaffRole
 } from '@/lib/supabase/db';
 import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from '@/components/SplashScreen';
@@ -881,6 +881,28 @@ useEffect(() => {
   // ✅ مفيش signOut — إنت تفضل مدير
 };
 
+const handleToggleRole = async (member: any) => {
+  const newRole = member.role === 'admin' ? 'technician' : 'admin';
+  const actionText = newRole === 'admin' ? 'ترقية' : 'تخفيض';
+  const confirmText = newRole === 'admin'
+    ? `هل تريد ترقية "${member.name}" إلى مدير عام؟`
+    : `هل تريد تخفيض "${member.name}" إلى فني صيانة؟`;
+
+  if (!confirm(confirmText)) return;
+
+  const result = await updateStaffRole(member.id, newRole);
+
+  if (!result.success) {
+    showToast(`فشل ${actionText}: ${result.error}`, 'error');
+    return;
+  }
+
+  setStaffList(prev =>
+    prev.map(s => (s.id === member.id ? { ...s, role: newRole } : s))
+  );
+
+  showToast(`تم ${actionText} "${member.name}" بنجاح`, 'success');
+};
   const handleDeleteStaff = (id: string) => {
     const member = staffList.find(s => s.id === id);
     openConfirm('حذف موظف', `هل أنت متأكد من حذف "${member?.name || ''}" من النظام؟`, () => {
@@ -2873,6 +2895,17 @@ const isRestrictedForTech = (tabId: TabId) =>
                             >
                               🔑 تعديل كلمة السر
                             </button>
+                            <button
+  onClick={() => handleToggleRole(member)}
+  className={`border px-3 py-1.5 rounded-xl text-2xs font-bold ${
+    member.role === 'admin'
+      ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+  }`}
+  title={member.role === 'admin' ? 'تخفيض إلى فني' : 'ترقية إلى مدير'}
+>
+  {member.role === 'admin' ? '⬇️ تخفيض لفني' : '⬆️ ترقية لمدير'}
+</button>
                             {staffList.length > 1 && (
                               <button
                                 onClick={() => handleDeleteStaff(member.id)}

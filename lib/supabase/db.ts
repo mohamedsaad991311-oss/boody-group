@@ -448,6 +448,25 @@ export async function fetchStaff() {
   return { success: true, data: data || [] };
 }
 
+export async function updateStaffRole(staffId: string, newRole: 'admin' | 'technician') {
+  try {
+    const response = await fetch('/api/admin/update-staff-role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId, newRole }),
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      return { success: false, error: result.error || 'فشل تحديث الصلاحية' };
+    }
+
+    return { success: true, data: result.data };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'حدث خطأ في الاتصال' };
+  }
+}
 
 export async function updateStaffMember(staffId: string, data: {
   name?: string;
