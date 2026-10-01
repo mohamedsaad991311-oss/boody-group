@@ -505,3 +505,90 @@ export async function getCurrentUserRole() {
   if (error || !data) return { success: false, role: null };
   return { success: true, role: data.role, name: data.name };
 }
+// ============================================================
+// 📜 Activity Log — سجل النشاط
+// ============================================================
+export async function logActivity(data: {
+  action: 'add' | 'edit' | 'delete' | 'login' | 'logout' | 'role_change' | 'other';
+  entity: 'inventory' | 'supplier' | 'receipt' | 'staff' | 'expense' | 'payment' | 'invoice' | 'return' | 'settings' | 'system';
+  entityId?: string;
+  entityName?: string;
+  details?: string;
+  userName?: string;
+  userRole?: string;
+}) {
+  try {
+    const supabase = createClient();
+    
+    // جلب بيانات المستخدم الحالي
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const { error } = await supabase
+      .from('activity_log')
+      .insert({
+        user_id: user?.id || 'unknown',
+        user_name: data.userName || user?.email || 'غير معروف',
+        user_role: data.userRole || 'unknown',
+        action: data.action,
+        entity: data.entity,
+        entity_id: data.entityId || null,
+        entity_name: data.entityName || null,
+        details: data.details || null,
+      });
+
+    if (error) {
+      console.error('Activity Log Error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Activity Log Exception:', err);
+    return { success: false, error: err?.message || 'حدث خطأ' };
+  }
+}
+
+export async function fetchActivityLog(filters?: {
+  fromDate?: string;
+  toDate?: string;
+  entity?: string;
+  userId?: string;
+  limit?: number;
+}) {
+  try {
+    const supabase = createClient();
+    
+    let query = supabase
+      .from('activity_log')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (filters?.fromDate) {
+      query = query.gte('created_at', filters.fromDate);
+    }
+    if (filters?.toDate) {
+      query = query.lte('created_at', filters.toDate + 'T23:59:59');
+    }
+    if (filters?.entity && filters.entity !== 'all') {
+      query = query.eq('entity', filters.entity);
+    }
+    if (filters?.userId) {
+      query = query.eq('user_id', filters.userId);
+    }
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    } else {
+      query = query.limit(500);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { success: false, error: error.message, data: [] };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'حدث خطأ', data: [] };
+  }
+}

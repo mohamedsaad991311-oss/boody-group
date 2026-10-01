@@ -9,7 +9,7 @@ import {
   fetchSupplierInvoices, upsertSupplierInvoice, deleteSupplierInvoice,
   fetchSupplierPayments, upsertSupplierPayment, deleteSupplierPayment,
   fetchSupplierReturns, upsertSupplierReturn, deleteSupplierReturn,
- createStaffMember, fetchStaff, updateStaffMember, deleteStaffMember, getCurrentUserRole, updateStaffRole
+createStaffMember, fetchStaff, updateStaffMember, deleteStaffMember, getCurrentUserRole, updateStaffRole, logActivity
 } from '@/lib/supabase/db';
 import React, { useState, useEffect, useRef } from 'react';
 import SplashScreen from '@/components/SplashScreen';
@@ -1111,7 +1111,7 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
           
           // 📝 تسجيل حركة الحذف
           const item = inventory.find(i => i.id === id);
-          if (item) {
+                    if (item) {
             logInventoryMovement({
               inventoryId: item.id,
               partName: item.partName,
@@ -1120,6 +1120,15 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
               type: 'out',
               quantity: item.quantity,
               reason: 'حذف من المخزن',
+            });
+            
+            // 📜 تسجيل في Activity Log
+            await logActivity({
+              action: 'delete',
+              entity: 'inventory',
+              entityId: item.id,
+              entityName: item.partName,
+              details: `حذف قطعة "${item.partName}" من المخزن (شركة: ${item.brand || '-'}، كمية: ${item.quantity})`,
             });
           }
         }
