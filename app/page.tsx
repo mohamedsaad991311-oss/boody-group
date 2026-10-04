@@ -211,6 +211,11 @@ const [reportToDate, setReportToDate] = useState('');
   const [imei, setImei] = useState('');
   const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
+  const [issueChoices, setIssueChoices] = useState<Record<string, string>>({});
+const [partChoiceModal, setPartChoiceModal] = useState<{
+  issue: string;
+  options: any[];
+} | null>(null);
   const [customIssue, setCustomIssue] = useState('');
   const [price, setPrice] = useState<number>(0);
   const [partCost, setPartCost] = useState<number>(0);
@@ -956,15 +961,17 @@ const handleToggleRole = async (member: any) => {
 
   /* ------------------------- Inventory Integration ------------------------- */
 
-  const processInventoryOnReceipt = (deviceBrand: string, issuesList: string[]) => {
-    let updatedInv = [...inventory];
+const processInventoryOnReceipt = (deviceBrand: string, issuesList: string[], choices: Record<string, string> = {}) => {    let updatedInv = [...inventory];
     const alerts: string[] = [];
 
     issuesList.forEach(issue => {
-      const idx = updatedInv.findIndex(inv =>
-        inv.brand.toLowerCase() === deviceBrand.toLowerCase() &&
-        inv.partName.toLowerCase().trim() === issue.toLowerCase().trim()
-      );
+      const chosenId = choices[issue];
+const idx = chosenId
+  ? updatedInv.findIndex(inv => inv.id === chosenId)
+  : updatedInv.findIndex(inv =>
+      inv.brand.toLowerCase() === deviceBrand.toLowerCase() &&
+      inv.partName.toLowerCase().trim() === issue.toLowerCase().trim()
+    );
             if (idx !== -1 && updatedInv[idx].quantity > 0) {
         updatedInv[idx].quantity -= 1;
         alerts.push(`تم خصم (${updatedInv[idx].partName} - ${updatedInv[idx].brand}) من المخزن`);
@@ -987,25 +994,27 @@ const handleToggleRole = async (member: any) => {
   };
 
   // حساب تكلفة القطع تلقائيًا من المخزن عند اختيار الأعطال
-  const autoComputePartCost = (deviceBrand: string, selected: string[]): number => {
-    let total = 0;
-    selected.forEach(issue => {
-      const found = inventory.find(inv =>
-        inv.brand.toLowerCase() === deviceBrand.toLowerCase() &&
-        inv.partName.toLowerCase().trim() === issue.toLowerCase().trim()
-      );
-      if (found) total += found.costPrice || 0;
-    });
-    return total;
-  };
+ const autoComputePartCost = (deviceBrand: string, selected: string[]): number => {
+  let total = 0;
+  selected.forEach(issue => {
+    const chosenId = issueChoices[issue];
+    const found = chosenId
+      ? inventory.find(inv => inv.id === chosenId)
+      : inventory.find(inv =>
+          inv.brand.toLowerCase() === deviceBrand.toLowerCase() &&
+          inv.partName.toLowerCase().trim() === issue.toLowerCase().trim()
+        );
+    if (found) total += found.costPrice || 0;
+  });
+  return total;
+};
 
-  useEffect(() => {
-    if (userRole !== 'admin') return;
-    const auto = autoComputePartCost(dType, selectedIssues);
-    if (auto > 0) setPartCost(auto);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIssues, dType]);
-
+ useEffect(() => {
+  if (userRole !== 'admin') return;
+  const auto = autoComputePartCost(dType, selectedIssues);
+  if (auto > 0) setPartCost(auto);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedIssues, dType, issueChoices]);
   /* ------------------------- Image Upload ------------------------- */
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1333,8 +1342,7 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
     }
 
     // ---------- إنشاء إيصال جديد ----------
-    processInventoryOnReceipt(dType, issuesToCheck);
-
+processInventoryOnReceipt(dType, issuesToCheck, issueChoices);
        // ---------- حساب رقم الإيصال (لا يتكرر أبدًا) ----------
     const storedCounter = parseInt(localStorage.getItem('bg_receipt_counter') || '0', 10);
     
@@ -2059,9 +2067,28 @@ const isRestrictedForTech = (tabId: TabId) =>
                         type="button"
                         key={issue}
                         onClick={() => {
-                          if (isSelected) setSelectedIssues(selectedIssues.filter(i => i !== issue));
-                          else setSelectedIssues([...selectedIssues, issue]);
-                        }}
+  if (isSelected) {
+    setSelectedIssues(selectedIssues.filter(i => i !== issue));
+    const newChoices = { ...issueChoices };
+    delete newChoices[issue];
+    setIssueChoices(newChoices);
+  } else {
+    const matches = inventory.filter(inv =>
+      inv.brand.toLowerCase() === dType.toLowerCase() &&
+      inv.partName.toLowerCase().trim() === issue.toLowerCase().trim() &&
+      inv.quantity > 0
+    );
+    
+    if (matches.length > 1) {
+      setPartChoiceModal({ issue, options: matches });
+    } else if (matches.length === 1) {
+      setSelectedIssues([...selectedIssues, issue]);
+      setIssueChoices({ ...issueChoices, [issue]: matches[0].id });
+    } else {
+      setSelectedIssues([...selectedIssues, issue]);
+    }
+  }
+}}
                         className={`p-3 rounded-xl text-right border transition flex items-center justify-between ${
                           isSelected ? 'bg-indigo-600 text-white border-indigo-500 font-bold shadow' : `${theme.badgeInactive} hover:opacity-80`
                         }`}
@@ -3635,7 +3662,49 @@ const isRestrictedForTech = (tabId: TabId) =>
           </form>
         </div>
       )}
+{/* ================= 🔧 Part Choice Modal ================= */}
+{partChoiceModal && (
+  <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className={`${theme.card} border rounded-2xl p-6 w-full max-w-md space-y-3`}>
+      <h3 className="font-bold text-indigo-400 text-lg">
+        🔧 اختر نوع القطعة: {partChoiceModal.issue}
+      </h3>
+      <p className={`text-xs ${theme.textMuted}`}>
+        فيه أكتر من نوع في المخزن. اختر النوع اللي هيتخصم.
+      </p>
 
+      <div className="space-y-2">
+        {partChoiceModal.options.map(opt => (
+          <button
+            key={opt.id}
+            onClick={() => {
+              setSelectedIssues([...selectedIssues, partChoiceModal.issue]);
+              setIssueChoices({ ...issueChoices, [partChoiceModal.issue]: opt.id });
+              setPartChoiceModal(null);
+            }}
+            className="w-full text-right p-4 rounded-xl border bg-indigo-500/10 hover:bg-indigo-500/20 border-indigo-500/20 transition"
+          >
+            <div className="flex justify-between items-center">
+              <span className="font-bold">
+                {opt.category === 'original' ? '🟢 أصلي' : opt.category === 'copy' ? '✨ تجاري' : '📤 مسحوب'}
+              </span>
+              <span className={`text-xs ${theme.textMuted}`}>
+                كمية: {opt.quantity} | {opt.costPrice} ج.م
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setPartChoiceModal(null)}
+        className="w-full bg-zinc-600 hover:bg-zinc-500 text-white font-bold py-3 rounded-xl"
+      >
+        إلغاء
+      </button>
+    </div>
+  </div>
+)}
 {/* ================= ✏️ Edit Inventory Modal ================= */}
 {isEditModalOpen && editingItem && (
   <div className="fixed inset-0 z-[1000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
