@@ -1291,10 +1291,10 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
 
   const handleSaveReceiptSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cName.trim() || !cPhone.trim()) {
-      showToast('يرجى إدخال اسم العميل ورقم الهاتف', 'error');
-      return;
-    }
+  if (!cName.trim()) {
+  showToast('يرجى إدخال اسم العميل', 'error');
+  return;
+}
 
     const finalIssues = selectedIssues.length ? [...selectedIssues] : [];
     if (customIssue.trim()) finalIssues.push(customIssue.trim());
@@ -1391,8 +1391,9 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
       `💰 الإجمالي: ${price} ج.م\n` +
       `📌 المتبقي: ${remainingAmount} ج.م\n` +
       `📞 هاتف الإدارة: ${shopPhone}`;
-    openWhatsAppDirect(cPhone, customerWhatsAppMsg);
-
+if (cPhone.trim()) {
+  openWhatsAppDirect(cPhone, customerWhatsAppMsg);
+}
     notifyAdminsWhatsApp(
       `استلام جهاز جديد - ${receiptNum}`,
       `العميل: ${cName}\nالهاتف: ${cPhone}\nالجهاز: ${dType} ${dModel}\nالأعطال: ${issuesToCheck.join('، ')}\nالإجمالي: ${price} ج.م\nالعربون: ${deposit} ج.م`
@@ -1978,8 +1979,7 @@ const isRestrictedForTech = (tabId: TabId) =>
                 </div>
                 <div>
                   <label className={`block mb-1 ${theme.textMuted}`}>رقم الموبايل *</label>
-                  <input required value={cPhone} onChange={e => setCPhone(e.target.value)} type="text" className={`w-full ${theme.input} p-3.5 rounded-xl`} placeholder="01038084846" />
-                </div>
+<input value={cPhone} onChange={e => setCPhone(e.target.value)} type="text" className={`w-full ${theme.input} p-3.5 rounded-xl`} placeholder="01038084846 (اختياري)" />                </div>
               </div>
 
               {/* صورة الجهاز */}
