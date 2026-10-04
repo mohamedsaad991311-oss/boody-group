@@ -3136,19 +3136,19 @@ const isRestrictedForTech = (tabId: TabId) =>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className={`${theme.card} p-5 rounded-2xl border`}>
                       <span className={`block mb-1 text-xs ${theme.textMuted}`}>إجمالي المبيعات (المسلّمة اليوم)</span>
-                      <strong className="text-2xl font-black">{todayTotalRevenue.toLocaleString()} ج.م</strong>
+                      <strong className="text-2xl font-black">{rangeTotalRevenue.toLocaleString()} ج.م</strong>
                     </div>
                     <div className={`${theme.card} p-5 rounded-2xl border`}>
                       <span className={`block mb-1 text-xs ${theme.textMuted}`}>تكلفة القطع المستخدمة</span>
-                      <strong className="text-2xl font-black text-amber-400">{todayTotalCosts.toLocaleString()} ج.م</strong>
+                      <strong className="text-2xl font-black text-amber-400">{rangeTotalCosts.toLocaleString()} ج.م</strong>
                     </div>
                     <div className={`${theme.card} p-5 rounded-2xl border`}>
                       <span className={`block mb-1 text-xs ${theme.textMuted}`}>المصروفات النثرية</span>
-                      <strong className="text-2xl font-black text-rose-400">{todayExpenseTotal.toLocaleString()} ج.م</strong>
+                      <strong className="text-2xl font-black text-rose-400">{rangeExpenseTotal.toLocaleString()} ج.م</strong>
                     </div>
                     <div className={`${theme.card} p-5 rounded-2xl border`}>
                       <span className="text-emerald-400 block mb-1 font-bold text-xs">صافي الربح الفعلي 🎯</span>
-                      <strong className="text-3xl font-black text-emerald-400">{todayNetProfit.toLocaleString()} ج.م</strong>
+                      <strong className="text-3xl font-black text-emerald-400">{rangeNetProfit.toLocaleString()} ج.م</strong>
                     </div>
                   </div>
 
