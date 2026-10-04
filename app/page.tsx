@@ -17,6 +17,7 @@ import BottomNav from '@/components/BottomNav';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { getTheme, classes } from '@/lib/theme';
 import { syncAllToSupabase } from '@/lib/supabase/db';
+import { printCustomerCard } from '@/lib/printCard';
 /* =========================================================================
    الأنواع (Types)
    ========================================================================= */
@@ -989,6 +990,7 @@ const handleToggleRole = async (member: any) => {
   
   // 🚪 تسجيل الخروج
   const handleLogout = () => {
+    
     openConfirm(
       'تسجيل الخروج',
       'هل أنت متأكد من تسجيل الخروج من النظام؟',
@@ -1866,6 +1868,18 @@ const isRestrictedForTech = (tabId: TabId) =>
         </span>
       )}
     </button>
+{/* 🖨️ طباعة كارت */}
+<button
+  onClick={printCustomerCard}
+  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
+    darkMode
+      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/20'
+      : 'bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100'
+  }`}
+  title="طباعة كارت للمحل"
+>
+  🖨️
+</button>
 
     {/* ☀️/🌙 الوضع */}
     <button
