@@ -1334,15 +1334,26 @@ showToast('تم تحديث وإضافة القطع للمخزن المحلي ب�
     // ---------- إنشاء إيصال جديد ----------
     processInventoryOnReceipt(dType, issuesToCheck);
 
-    const maxReceiptNum = receipts.reduce((max, r) => {
+       // ---------- حساب رقم الإيصال (لا يتكرر أبدًا) ----------
+    const storedCounter = parseInt(localStorage.getItem('bg_receipt_counter') || '0', 10);
+    
+    // احسب أعلى رقم من الإيصالات الحالية
+    const maxFromReceipts = receipts.reduce((max, r) => {
       const match = r.receiptNumber.match(/-(\d+)/);
       if (match) {
         const n = parseInt(match[1], 10);
         return n > max ? n : max;
       }
       return max;
-    }, 1000);
-    const receiptNum = `${receiptPrefix || 'BG'}-${maxReceiptNum + 1}`;
+    }, 0);
+    
+    // استخدم الأعلى بين العداد المخزن وأعلى رقم موجود
+    const nextNum = Math.max(storedCounter, maxFromReceipts, 1000) + 1;
+    
+    // احفظ العداد
+    localStorage.setItem('bg_receipt_counter', String(nextNum));
+    
+    const receiptNum = `${receiptPrefix || 'BG'}-${nextNum}`;
 
     const remainingAmount = Number(price) - Number(deposit);
 
