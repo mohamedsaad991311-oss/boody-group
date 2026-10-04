@@ -78,3 +78,14 @@ next-env.d.ts
 *.SUPPLIERS-* 
 *.A-COMPLETE 
 *.B-COMPLETE 
+ 
+# Backup files 
+*.before-* 
+*.BEFORE-* 
+*.after-* 
+*.AFTER-* 
+*.DONE 
+*.COMPLETE 
+*.SECURITY 
+*.STABLE-* 
+*.FIXED 
