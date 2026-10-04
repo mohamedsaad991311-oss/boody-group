@@ -216,7 +216,7 @@ const [partChoiceModal, setPartChoiceModal] = useState<{
   issue: string;
   options: any[];
 } | null>(null);
-  const [customIssue, setCustomIssue] = useState('');
+const [openCategory, setOpenCategory] = useState<string | null>('display');  const [customIssue, setCustomIssue] = useState('');
   const [price, setPrice] = useState<number>(0);
   const [partCost, setPartCost] = useState<number>(0);
   const [deposit, setDeposit] = useState<number>(0);
@@ -343,7 +343,58 @@ const [newReturnInvoiceId, setNewReturnInvoiceId] = useState('');
   'عطل في الشاشة اللمس', 'صوت واطي', 'سخونة زائدة', 'بطء الجهاز',
   'فاصل باور', 'لزق شاشة', 'فلاتة باور', 'بصمة',
 ];
-
+const issuesCategories = [
+  {
+    id: 'display',
+    label: '📱 الشاشة واللمس',
+    issues: ['شاشة', 'باغة', 'لزق شاشة', 'عطل في الشاشة اللمس', 'عظمة شاشة', 'اضاءة', 'بيانات'],
+  },
+  {
+    id: 'battery',
+    label: '🔋 البطارية والشحن',
+    issues: ['بطارية', 'سوكيت شحن', 'فلاتة شحن ميكرو', 'فلاتة شحن تيب سى'],
+  },
+  {
+    id: 'power',
+    label: '🔌 البورد والطاقة',
+    issues: ['بوردة', 'فاصل باور', 'فلاتة باور', 'معالج', 'كونكتر بوردة', 'مقاومة حرارية'],
+  },
+  {
+    id: 'camera',
+    label: '📷 الكاميرا',
+    issues: ['كاميرا أمامية', 'كاميرا خلفية', 'عدسة كاميرا خلفية'],
+  },
+  {
+    id: 'audio',
+    label: '🔊 الصوت',
+    issues: ['سماعة أذن', 'سماعة جرس', 'مايك داخلي', 'صوت واطي', 'فلتر سماعة'],
+  },
+  {
+    id: 'network',
+    label: '🌐 الشبكة والاتصال',
+    issues: ['شبكة', 'wifi', 'بلوتوث', 'كبل شبكة'],
+  },
+  {
+    id: 'sensors',
+    label: '🔒 الحساسات والأزرار',
+    issues: ['بصمة', 'درج خط'],
+  },
+  {
+    id: 'software',
+    label: '💻 السوفت وير والأداء',
+    issues: ['سوفت وير', 'بيانات', 'بطء الجهاز', 'سخونة زائدة'],
+  },
+  {
+    id: 'body',
+    label: '🎨 الهيكل والمظهر',
+    issues: ['ظهر', 'هاوسينج'],
+  },
+  {
+    id: 'other',
+    label: '⚙️ أعطال أخرى',
+    issues: [],
+  },
+];
   // قائمة قطع المخزن (parts) — تظهر عند إضافة قطع للمخزن
  const partsList = [
   'شاشة', 'باغة', 'ظهر', 'كاميرا', 'فلاتة باور',
@@ -2056,51 +2107,112 @@ const isRestrictedForTech = (tabId: TabId) =>
                 </div>
               </div>
 
-              {/* الأعطال */}
-              <div>
-                <label className="block mb-2 font-bold text-indigo-400">🛠️ حدد الأعطال المطلوبة:</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-3">
-                  {issuesList.map(issue => {
-                    const isSelected = selectedIssues.includes(issue);
-                    return (
-                      <button
-                        type="button"
-                        key={issue}
-                        onClick={() => {
-  if (isSelected) {
-    setSelectedIssues(selectedIssues.filter(i => i !== issue));
-    const newChoices = { ...issueChoices };
-    delete newChoices[issue];
-    setIssueChoices(newChoices);
-  } else {
-    const matches = inventory.filter(inv =>
-      inv.brand.toLowerCase() === dType.toLowerCase() &&
-      inv.partName.toLowerCase().trim() === issue.toLowerCase().trim() &&
-      inv.quantity > 0
-    );
-    
-    if (matches.length > 1) {
-      setPartChoiceModal({ issue, options: matches });
-    } else if (matches.length === 1) {
-      setSelectedIssues([...selectedIssues, issue]);
-      setIssueChoices({ ...issueChoices, [issue]: matches[0].id });
-    } else {
-      setSelectedIssues([...selectedIssues, issue]);
-    }
-  }
-}}
-                        className={`p-3 rounded-xl text-right border transition flex items-center justify-between ${
-                          isSelected ? 'bg-indigo-600 text-white border-indigo-500 font-bold shadow' : `${theme.badgeInactive} hover:opacity-80`
-                        }`}
-                      >
-                        <span className="truncate">{issue}</span>
-                        <span className="shrink-0">{isSelected ? '☑️' : '◻️'}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* الأعطال — Accordion */}
+<div>
+  <label className="block mb-3 font-bold text-indigo-400">🛠️ حدد الأعطال المطلوبة:</label>
 
-                <div>
+  {/* عرض الأعطال المختارة */}
+  {selectedIssues.length > 0 && (
+    <div className="mb-3 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-2xs font-bold text-indigo-400">المختار ({selectedIssues.length}):</span>
+        {selectedIssues.map(issue => (
+          <span
+            key={issue}
+            className="bg-indigo-600 text-white text-2xs font-bold px-2.5 py-1 rounded-lg flex items-center gap-1"
+          >
+            {issue}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedIssues(selectedIssues.filter(i => i !== issue));
+                const newChoices = { ...issueChoices };
+                delete newChoices[issue];
+                setIssueChoices(newChoices);
+              }}
+              className="hover:bg-white/20 rounded-full w-4 h-4 flex items-center justify-center text-xs"
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {/* الفئات */}
+  <div className="space-y-2">
+    {issuesCategories.map(cat => {
+      const isOpen = openCategory === cat.id;
+      const selectedCount = cat.issues.filter(i => selectedIssues.includes(i)).length;
+
+      return (
+        <div key={cat.id} className={`rounded-xl border ${theme.card} overflow-hidden`}>
+          {/* رأس الفئة */}
+          <button
+            type="button"
+            onClick={() => setOpenCategory(isOpen ? null : cat.id)}
+            className="w-full p-3 flex justify-between items-center hover:bg-indigo-500/5 transition"
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm">{cat.label}</span>
+              {selectedCount > 0 && (
+                <span className="bg-indigo-600 text-white text-2xs font-bold px-2 py-0.5 rounded-full">
+                  {selectedCount}
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-indigo-400">{isOpen ? '▲' : '▼'}</span>
+          </button>
+
+          {/* الأعطال */}
+          {isOpen && (
+            <div className="p-3 pt-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {cat.issues.map(issue => {
+                const isSelected = selectedIssues.includes(issue);
+                return (
+                  <button
+                    type="button"
+                    key={issue}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedIssues(selectedIssues.filter(i => i !== issue));
+                        const newChoices = { ...issueChoices };
+                        delete newChoices[issue];
+                        setIssueChoices(newChoices);
+                      } else {
+                        const matches = inventory.filter(inv =>
+                          inv.brand.toLowerCase() === dType.toLowerCase() &&
+                          inv.partName.toLowerCase().trim() === issue.toLowerCase().trim() &&
+                          inv.quantity > 0
+                        );
+
+                        if (matches.length > 1) {
+                          setPartChoiceModal({ issue, options: matches });
+                        } else if (matches.length === 1) {
+                          setSelectedIssues([...selectedIssues, issue]);
+                          setIssueChoices({ ...issueChoices, [issue]: matches[0].id });
+                        } else {
+                          setSelectedIssues([...selectedIssues, issue]);
+                        }
+                      }
+                    }}
+                    className={`p-2.5 rounded-lg text-right border transition text-xs ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white border-indigo-500 font-bold shadow'
+                        : `${theme.badgeInactive} hover:opacity-80`
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : ''}{issue}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    })}
+ 
                   <label className={`block mb-1 ${theme.textMuted}`}>✍️ أعطال أو تفاصيل أخرى:</label>
                   <input value={customIssue} onChange={e => setCustomIssue(e.target.value)} type="text" className={`w-full ${theme.input} p-3 rounded-xl`} placeholder="اكتب ملاحظات إضافية للعطل..." />
                 </div>
